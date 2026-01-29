@@ -251,6 +251,13 @@ def create_pdf_report(
         textColor=colors.grey,
         spaceAfter=10,
     )
+    cell_style = ParagraphStyle(
+        "TableCell",
+        parent=styles["BodyText"],
+        fontSize=9.5,
+        leading=12,
+        wordWrap='CJK',  # Enables word wrapping
+    )
 
     story: List[Any] = []
     story.append(Paragraph("Image Analysis Report", title_style))
@@ -268,7 +275,9 @@ def create_pdf_report(
     story.append(Spacer(1, 6))
     story.append(Paragraph("Key Findings", h_style))
     if analysis.findings:
-        rows = [["#", "Finding"]] + [[str(i + 1), f] for i, f in enumerate(analysis.findings)]
+        rows = [["#", Paragraph("Finding", cell_style)]] + [
+            [str(i + 1), Paragraph(f, cell_style)] for i, f in enumerate(analysis.findings)
+        ]
         tbl = Table(rows, colWidths=[0.4 * inch, 6.6 * inch])
         tbl.setStyle(
             TableStyle(
@@ -296,8 +305,8 @@ def create_pdf_report(
     story.append(Spacer(1, 10))
     story.append(Paragraph("Recommendations", h_style))
     if analysis.recommendations:
-        rows = [["#", "Recommendation"]] + [
-            [str(i + 1), r] for i, r in enumerate(analysis.recommendations)
+        rows = [["#", Paragraph("Recommendation", cell_style)]] + [
+            [str(i + 1), Paragraph(r, cell_style)] for i, r in enumerate(analysis.recommendations)
         ]
         tbl = Table(rows, colWidths=[0.4 * inch, 6.6 * inch])
         tbl.setStyle(
