@@ -2,6 +2,7 @@ import io
 import json
 import os
 import re
+import base64
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -197,6 +198,72 @@ def analyze_image_with_gemini(image: Image.Image, api_key: str) -> Tuple[Analysi
         raise RuntimeError(f"Gemini analysis failed ({model_name}): {e}") from e
 
 
+def analyze_image_with_openai(image: Image.Image, api_key: str) -> Tuple[AnalysisResult, str]:
+    """
+    Returns (parsed_result, raw_text) using OpenAI Vision API.
+    """
+    try:
+        from openai import OpenAI
+    except ImportError as e:
+        raise RuntimeError(f"OpenAI package not installed. Please run: pip install openai. Error: {e}")
+    
+    client = OpenAI(api_key=api_key)
+    
+    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    
+    prompt = DEFAULT_SYSTEM_PROMPT
+    try:
+        if SYSTEM_PROMPT_PATH.exists():
+            prompt = SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip() or DEFAULT_SYSTEM_PROMPT
+    except Exception:
+        prompt = DEFAULT_SYSTEM_PROMPT
+    
+    try:
+        # Convert PIL image to base64
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        image_base64 = base64.standard_b64encode(buffer.getvalue()).decode("utf-8")
+        
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=2048
+        )
+        raw_text = response.choices[0].message.content
+        parsed = parse_gemini_response(raw_text)  # JSON parsing is API-agnostic
+        return parsed, raw_text
+    except Exception as e:
+        # Provide more specific error messages
+        error_msg = str(e)
+        if "connection" in error_msg.lower() or "timeout" in error_msg.lower() or "network" in error_msg.lower():
+            error_msg = f"Connection failed. This may be due to corporate firewall/proxy blocking OpenAI APIs, or temporary service issues. Try using Gemini instead, or check with your IT department. ({model_name})"
+        elif "authentication" in error_msg.lower() or "api key" in error_msg.lower() or "unauthorized" in error_msg.lower():
+            error_msg = f"Authentication failed. Please check your OpenAI API key is valid and has access to {model_name}. ({model_name})"
+        elif "rate limit" in error_msg.lower() or "quota" in error_msg.lower():
+            error_msg = f"Rate limit exceeded. Please wait a moment and try again, or check your OpenAI account limits. ({model_name})"
+        elif "model" in error_msg.lower() and "not found" in error_msg.lower():
+            error_msg = f"Model {model_name} not available. Try setting OPENAI_MODEL=gpt-4o-mini in your .env file. ({model_name})"
+        else:
+            error_msg = f"OpenAI analysis failed ({model_name}): {error_msg}"
+        raise RuntimeError(error_msg) from e
+
+
 def create_pdf_report(
     *,
     analysis: AnalysisResult,
@@ -354,9 +421,38 @@ def main() -> None:
     load_dotenv()
     build_ui_shell()
 
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key:
-        st.warning("Missing `GEMINI_API_KEY`. Create a `.env` from `.env.example` and set your key.")
+    # Get API keys from environment
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+
+    # API provider selection
+    st.subheader("🔧 API Configuration")
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        api_provider = st.radio(
+            "Choose AI Provider:",
+            ["gemini", "openai"],
+            index=0,  # Default to gemini
+            help="Select which AI service to use for image analysis"
+        )
+
+    with col2:
+        if api_provider == "gemini":
+            if not gemini_key:
+                st.error("❌ Gemini API key not configured in .env file")
+                st.stop()
+            api_key = gemini_key
+            st.success("✅ Gemini API ready")
+        else:  # openai
+            if not openai_key:
+                st.error("❌ OpenAI API key not configured in .env file")
+                st.stop()
+            api_key = openai_key
+            st.success("✅ OpenAI API ready")
+
+    # Display which API is being used
+    st.info(f"🔌 **Active Provider:** {api_provider.upper()}")
 
     if "analysis" not in st.session_state:
         st.session_state.analysis = None
@@ -387,19 +483,24 @@ def main() -> None:
             st.error("Could not read that file as an image. Please upload a valid PNG/JPG/WEBP.")
             return
 
-        st.image(image, caption=f"Preview: {uploaded.name}", use_container_width=True)
+        st.image(image, caption=f"Preview: {uploaded.name}", width='stretch')
 
     analyze_disabled = (image is None) or (not api_key)
-    if st.button("Analyze image", type="primary", disabled=analyze_disabled, use_container_width=True):
+    if st.button("Analyze image", type="primary", disabled=analyze_disabled, width='stretch'):
         st.session_state.analysis = None
         st.session_state.report_bytes = None
         st.session_state.report_filename = None
 
         raw = ""
         try:
-            with st.spinner("Analyzing with Gemini..."):
-                parsed, raw = analyze_image_with_gemini(image=image, api_key=api_key)  # type: ignore[arg-type]
-                st.session_state.analysis = parsed
+            if api_provider == "gemini":
+                with st.spinner("Analyzing with Gemini..."):
+                    parsed, raw = analyze_image_with_gemini(image=image, api_key=api_key)  # type: ignore[arg-type]
+            else:  # openai
+                with st.spinner("Analyzing with OpenAI..."):
+                    parsed, raw = analyze_image_with_openai(image=image, api_key=api_key)  # type: ignore[arg-type]
+            
+            st.session_state.analysis = parsed
         except Exception as e:
             st.session_state.analysis = None
             st.error(str(e))
@@ -435,14 +536,14 @@ def main() -> None:
         st.subheader("Findings")
         if analysis.findings:
             df_f = pd.DataFrame({"Finding": analysis.findings})
-            st.dataframe(df_f, use_container_width=True, hide_index=True, height=400)
+            st.dataframe(df_f, width='stretch', hide_index=True, height=400)
         else:
             st.info("No findings returned.")
 
         st.subheader("Recommendations")
         if analysis.recommendations:
             df_r = pd.DataFrame({"Recommendation": analysis.recommendations})
-            st.dataframe(df_r, use_container_width=True, hide_index=True, height=400)
+            st.dataframe(df_r, width='stretch', hide_index=True, height=400)
         else:
             st.info("No recommendations returned.")
 
@@ -453,7 +554,7 @@ def main() -> None:
                 data=st.session_state.report_bytes,
                 file_name=st.session_state.report_filename,
                 mime="application/pdf",
-                use_container_width=True,
+                width='stretch',
             )
 
 
