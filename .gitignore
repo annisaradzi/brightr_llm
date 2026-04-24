@@ -14,7 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Top-level only; a bare "lib/" ignores e.g. web/src/lib/ and breaks Next.js @/lib on Vercel.
+/lib/
 lib64/
 parts/
 sdist/
