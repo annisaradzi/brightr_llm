@@ -67,6 +67,7 @@ The app is a **two-tier system** with a clear backend/frontend split:
 | `POST` | `/api/sessions/{id}/images` | Upload inspection photos (multipart) |
 | `POST` | `/api/sessions/{id}/analyze` | Run Gemini AI analysis on all images |
 | `PATCH` | `/api/sessions/{id}/items/{itemId}` | Edit AI-generated findings (human review) |
+| `DELETE` | `/api/sessions/{id}/items/{itemId}` | Remove uploaded image (pending/failed only, draft session) |
 | `POST` | `/api/sessions/{id}/submit` | Finalize session, generate PDF, write sidecar files |
 | `GET` | `/api/sessions/{id}/items/{itemId}/image` | Serve stored JPEG image |
 
@@ -75,7 +76,9 @@ The app is a **two-tier system** with a clear backend/frontend split:
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/reports` | List submitted reports (with filtering, pagination, sorting) |
+| `POST` | `/api/reports/bulk-delete` | Delete multiple reports (`{ reportIds: string[] }`) |
 | `GET` | `/api/reports/{id}` | Report detail with all findings |
+| `DELETE` | `/api/reports/{id}` | Delete report (DB + storage) |
 | `POST` | `/api/reports/{id}/approve` | Approve a report |
 | `POST` | `/api/reports/{id}/request-changes` | Send report back with comments |
 | `GET` | `/api/reports/{id}/pdf` | Download executive summary PDF |
@@ -246,7 +249,9 @@ This means the `INTERNAL_API_KEY` and `GEMINI_API_KEY` are **never exposed** to 
 | `web/src/components/BrightrDashboard.tsx` | Main inspection dashboard — the primary UI. Upload images, view AI findings, edit fields, submit |
 | `web/src/components/BrightrDashboardTemplate.tsx` | Alternate "spreadsheet" layout (built but **not wired** to any route) |
 | `web/src/api/sessions.ts` | Client-side API functions (call same-origin `/api/*` routes) |
-| `web/src/api/reports.ts` | Reports API client (built but **not used** yet — no reports pages) |
+| `web/src/api/reports.ts` | Reports API client; used by `/reports` pages |
+| `web/src/app/reports/*` | Reports list and detail UI (v2 mockup) |
+| `DELETE /api/sessions/{id}/items/{itemId}` | Remove pending/failed upload before analyze |
 | `web/src/api/client.ts` | Generic `apiFetch` wrapper with auth redirect on 401 |
 | `web/src/types/inspection.ts` | TypeScript interfaces mirroring backend schemas |
 | `web/src/lib/internal-api.ts` | Server-side BFF helpers (proxy to FastAPI, inject auth headers) |

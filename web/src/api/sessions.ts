@@ -40,6 +40,16 @@ export async function analyzeSession(
   );
 }
 
+export async function deleteItem(
+  sessionId: string,
+  itemId: string
+): Promise<InspectionSession> {
+  return apiFetch<InspectionSession>(
+    `/api/sessions/${sessionId}/items/${itemId}`,
+    { method: "DELETE" }
+  );
+}
+
 export async function patchItem(
   sessionId: string,
   itemId: string,

@@ -40,8 +40,27 @@ Health check: `GET {INTERNAL_API_URL}/health` ? `{"ok": true}`.
   Setting `maxDuration` higher than your plan allows has no effect; Vercel still enforces the plan cap.
 - **Request body size:** Vercel serverless request bodies are typically **~4.5MB**. The Python API may allow up to 10MB; very large images can fail at the Vercel hop first.
 
-## 5. Post-deploy checks
+## 5. BFF routes (same-origin)
+
+The browser never calls Render directly. Next.js proxies these paths with `X-Internal-Key`:
+
+| Path | Purpose |
+|------|---------|
+| `/api/sessions/*` | Create session, upload images, analyze, submit, patch items |
+| `DELETE /api/sessions/{id}/items/{itemId}` | Remove uploaded image before AI analysis |
+| `/api/reports` | List submitted reports (filters in query string) |
+| `DELETE /api/reports/{id}` | Delete one report |
+| `POST /api/reports/bulk-delete` | Delete multiple reports |
+| `/api/reports/{id}` | Report detail |
+| `/api/reports/{id}/pdf` | PDF download |
+| `/api/reports/{id}/approve` | Approve report |
+| `/api/reports/{id}/request-changes` | Send back with comment |
+
+Pages: `/` (inspection), `/reports`, `/reports/{id}` (middleware requires login).
+
+## 6. Post-deploy checks
 
 1. Open your Vercel URL, sign in, run an analysis.
-2. If you see **503** with a misconfiguration message, fix `INTERNAL_API_URL` in Vercel env and redeploy.
-3. If analyze **401**s on the API, align `INTERNAL_API_KEY` on Vercel and FastAPI.
+2. Submit a session, open `/reports/{sessionId}` — should not 404.
+3. If you see **503** with a misconfiguration message, fix `INTERNAL_API_URL` in Vercel env and redeploy.
+4. If analyze **401**s on the API, align `INTERNAL_API_KEY` on Vercel and FastAPI.

@@ -271,8 +271,8 @@ All `/api/sessions/*` and `/api/reports/*` calls are protected by:
 The web client surfaces for reports already exist in
 `web/src/api/reports.ts` (`listReports`, `getReport`, `approveReport`,
 `requestReportChanges`, `reportPdfUrl`), but per the repo summary the
-matching Next.js BFF routes and pages under `web/src/app/reports/*` are not
-wired yet — the FastAPI side is the source of truth.
+matching Next.js BFF routes under `web/src/app/api/reports/*` and pages under
+`web/src/app/reports/*` proxy to the FastAPI side (source of truth).
 
 ---
 

@@ -3,6 +3,7 @@
 import {
   analyzeSession,
   createSession,
+  deleteItem,
   getSession,
   itemImageSrc,
   patchItem,
@@ -51,6 +52,7 @@ export function BrightrDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("finding");
+  const sessionParam = searchParams.get("session");
 
   const [session, setSession] = useState<InspectionSession | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,17 +64,23 @@ export function BrightrDashboard() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const items = session?.items ?? [];
-  const activeItem = useMemo(
-    () => items.find((i) => i.id === selectedId) ?? items[0] ?? null,
-    [items, selectedId]
-  );
+  const activeItem = useMemo(() => {
+    if (!items.length) return null;
+    if (selectedId) {
+      const found = items.find((i) => i.id === selectedId);
+      if (found) return found;
+    }
+    return items[0] ?? null;
+  }, [items, selectedId]);
   const readOnly = session?.status === "submitted";
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const s = await createSession();
+        const s = sessionParam
+          ? await getSession(sessionParam)
+          : await createSession();
         if (!cancelled) setSession(s);
       } catch (e) {
         if (!cancelled)
@@ -84,15 +92,17 @@ export function BrightrDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [sessionParam]);
 
   const selectItem = useCallback(
-    (id: string) => {
+    (id: string | null) => {
       const p = new URLSearchParams(searchParams.toString());
-      p.set("finding", id);
+      if (id) p.set("finding", id);
+      else p.delete("finding");
+      if (session?.id) p.set("session", session.id);
       router.replace(`/?${p.toString()}`);
     },
-    [router, searchParams]
+    [router, searchParams, session?.id]
   );
 
   useEffect(() => {
@@ -185,6 +195,56 @@ export function BrightrDashboard() {
       setError(e instanceof ApiError ? e.message : "Submit failed");
     }
   }, [session]);
+
+  const canDeleteItem = useCallback((item: InspectionItem) => {
+    return (
+      !readOnly &&
+      (item.analysisStatus === "pending" || item.analysisStatus === "failed")
+    );
+  }, [readOnly]);
+
+  const onRemoveItem = useCallback(
+    async (item: InspectionItem) => {
+      if (!session || !canDeleteItem(item)) return;
+      if (
+        !window.confirm(
+          `Remove ${item.code}? This cannot be undone after AI analysis runs.`
+        )
+      ) {
+        return;
+      }
+      setError(null);
+      const removedId = item.id;
+      setSession((prev) =>
+        prev
+          ? { ...prev, items: prev.items.filter((i) => i.id !== removedId) }
+          : prev
+      );
+      try {
+        const updated = await deleteItem(session.id, removedId);
+        setSession(updated);
+        const remaining = updated.items;
+        if (remaining.length) {
+          const next =
+            activeItem?.id === removedId
+              ? remaining[0].id
+              : remaining.find((i) => i.id === activeItem?.id)?.id ?? remaining[0].id;
+          selectItem(next);
+        } else {
+          selectItem(null);
+        }
+      } catch (e) {
+        try {
+          const refreshed = await getSession(session.id);
+          setSession(refreshed);
+        } catch {
+          /* ignore refetch failure */
+        }
+        setError(e instanceof ApiError ? e.message : "Remove failed");
+      }
+    },
+    [session, canDeleteItem, activeItem?.id, selectItem]
+  );
 
   if (loading) {
     return (
@@ -309,11 +369,11 @@ export function BrightrDashboard() {
           </p>
           <ul className="space-y-1">
             {items.map((item) => (
-              <li key={item.id}>
+              <li key={item.id} className="flex gap-1">
                 <button
                   type="button"
                   onClick={() => selectItem(item.id)}
-                  className="flex w-full gap-2 rounded-lg border p-2 text-left text-xs"
+                  className="flex min-w-0 flex-1 gap-2 rounded-lg border p-2 text-left text-xs"
                   style={{
                     borderColor:
                       activeItem?.id === item.id ? "#D85A30" : "var(--color-border-tertiary)",
@@ -343,6 +403,20 @@ export function BrightrDashboard() {
                     </p>
                   </div>
                 </button>
+                {canDeleteItem(item) && (
+                  <button
+                    type="button"
+                    title="Remove image"
+                    className="shrink-0 self-center rounded border border-red-200 bg-red-50 px-1.5 py-2 text-[10px] text-red-800 hover:bg-red-100 disabled:opacity-50"
+                    disabled={analyzing || uploading}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveItem(item);
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
               </li>
             ))}
             {!items.length && (
@@ -357,7 +431,19 @@ export function BrightrDashboard() {
         <section className="flex flex-col p-4">
           {activeItem ? (
             <>
-              <p className="mb-2 text-sm font-medium">{activeItem.code}</p>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">{activeItem.code}</p>
+                {canDeleteItem(activeItem) && (
+                  <button
+                    type="button"
+                    className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800 hover:bg-red-100 disabled:opacity-50"
+                    disabled={analyzing || uploading}
+                    onClick={() => onRemoveItem(activeItem)}
+                  >
+                    Remove image
+                  </button>
+                )}
+              </div>
               <div
                 className="relative flex-1 overflow-hidden rounded-lg border"
                 style={{

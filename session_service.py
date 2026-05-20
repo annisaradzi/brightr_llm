@@ -39,6 +39,9 @@ from schemas import (
     InspectionItemOut,
     InspectionItemPatch,
     InspectionSessionOut,
+    BulkDeleteFailedItem,
+    BulkDeleteReportsResponse,
+    DeleteReportOut,
     ReportActionOut,
     ReportDetailOut,
     ReportListResponse,
@@ -386,6 +389,29 @@ def patch_item(
     item.updated_at = _utcnow()
     db.flush()
     return item_to_out(item)
+
+
+def delete_item(db: Session, session_id: str, item_id: str) -> InspectionSessionOut:
+    session = get_session(db, session_id)
+    if session.status == "submitted":
+        raise HTTPException(status_code=400, detail="Session is submitted and immutable")
+
+    item = next((i for i in session.items if i.id == item_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    if item.analysis_status == "complete":
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete an analyzed finding; only pending or failed uploads can be removed",
+        )
+
+    storage.delete_item_artifacts(session_id, item_id)
+    db.delete(item)
+    session.updated_at = _utcnow()
+    db.flush()
+    db.refresh(session)
+    return session_to_out(session)
 
 
 def _report_summary_row(session: InspectionSession) -> ReportSummaryOut:
@@ -776,6 +802,34 @@ def get_report_pdf_path(db: Session, report_id: str) -> str:
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Report PDF not found")
     return path
+
+
+def delete_report(db: Session, report_id: str) -> DeleteReportOut:
+    session = get_session(db, report_id)
+    if session.status not in REPORT_STATUSES:
+        raise HTTPException(status_code=404, detail="Report not found")
+    sid = session.id
+    storage.delete_session_dir(sid)
+    db.delete(session)
+    db.flush()
+    return DeleteReportOut(id=sid)
+
+
+def delete_reports_bulk(db: Session, report_ids: List[str]) -> BulkDeleteReportsResponse:
+    deleted: List[str] = []
+    failed: List[BulkDeleteFailedItem] = []
+    for rid in report_ids:
+        if not rid or not str(rid).strip():
+            continue
+        rid = str(rid).strip()
+        try:
+            delete_report(db, rid)
+            deleted.append(rid)
+        except HTTPException as e:
+            failed.append(BulkDeleteFailedItem(id=rid, reason=str(e.detail)))
+        except Exception as e:
+            failed.append(BulkDeleteFailedItem(id=rid, reason=str(e)))
+    return BulkDeleteReportsResponse(deleted=deleted, failed=failed)
 
 
 def submit_session(
