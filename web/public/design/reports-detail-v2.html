@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>brightr.AI — Report RF-A1B2C3D4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f7f6f4;
+      --surface: #ffffff;
+      --surface-2: #fafaf8;
+      --surface-3: #f0efeb;
+      --border: #e6e4df;
+      --border-strong: #d4d1ca;
+      --text: #1a1916;
+      --text-2: #57544d;
+      --text-3: #8b867d;
+      --brand: #d85a30;
+      --brand-soft: #faece7;
+      --brand-deep: #a8431f;
+      --success: #2d7a4f;
+      --success-soft: #e3f1e8;
+      --warning: #b8860b;
+      --warning-soft: #fdf3d4;
+      --error: #c93434;
+      --error-soft: #fce5e5;
+      --info: #3a6ea5;
+      --radius: 6px;
+      --radius-lg: 10px;
+      --shadow-sm: 0 1px 2px rgba(20,18,15,.04);
+      --shadow-md: 0 4px 12px rgba(20,18,15,.06), 0 1px 2px rgba(20,18,15,.04);
+      --mono: "Geist Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "Geist", -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    
+    .app {
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      height: 100vh;
+    }
+    
+    /* Topbar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      font-size: 15px;
+    }
+    .brand-mark {
+      width: 22px;
+      height: 22px;
+      background: var(--brand);
+      border-radius: 5px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .brand .dot { color: var(--brand); }
+    nav {
+      display: flex;
+      gap: 20px;
+      font-size: 13px;
+    }
+    nav a {
+      color: var(--text-2);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 6px 0;
+      border-bottom: 2px solid transparent;
+      transition: all .12s;
+    }
+    nav a:hover { color: var(--text); }
+    nav a.active {
+      color: var(--text);
+      border-bottom-color: var(--brand);
+    }
+    
+    /* Subbar */
+    .subbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+    .back-link {
+      color: var(--brand);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .back-link:hover { text-decoration: underline; }
+    .back-link svg { width: 14px; height: 14px; }
+    .report-title {
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+    .report-title strong {
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      cursor: pointer;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+      transition: all .12s;
+      text-decoration: none;
+    }
+    .btn:hover { background: var(--surface-2); border-color: var(--text-3); }
+    .btn-primary {
+      background: var(--brand);
+      color: white;
+      border-color: var(--brand);
+    }
+    .btn-primary:hover {
+      background: var(--brand-deep);
+      border-color: var(--brand-deep);
+    }
+    .btn svg { width: 14px; height: 14px; }
+    
+    /* Main content */
+    .content {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      overflow: hidden;
+      min-height: 0;
+    }
+    @media (max-width: 1200px) {
+      .content { grid-template-columns: 1fr; overflow-y: auto; }
+    }
+    
+    /* Left column: summary */
+    .summary-col {
+      padding: 20px;
+      overflow-y: auto;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+    }
+    @media (max-width: 1200px) {
+      .summary-col { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+    
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .user-report-id {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 4px;
+    }
+    .system-report-id {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-3);
+      letter-spacing: 0.02em;
+    }
+    .meta-list {
+      margin: 16px 0 0;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text-2);
+    }
+    .meta-list strong { color: var(--text); font-weight: 500; }
+    .summary-prose {
+      margin: 16px 0 0;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text);
+    }
+    
+    /* Stats grid */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-3);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .stat-value.high { color: var(--error); }
+    .stat-value.medium { color: var(--warning); }
+    .stat-value.low { color: var(--success); }
+    .stat-caption {
+      font-size: 11px;
+      color: var(--text-2);
+      margin-top: 4px;
+    }
+    
+    /* Right column: findings */
+    .findings-col {
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-3);
+      margin: 0 0 12px;
+    }
+    
+    /* Findings table */
+    .findings-table {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 11px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: var(--surface-3);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-2);
+      white-space: nowrap;
+    }
+    tbody tr {
+      cursor: pointer;
+      transition: background .1s;
+    }
+    tbody tr:hover { background: var(--surface-2); }
+    tbody tr.expanded { background: var(--brand-soft); }
+    tbody tr:last-child td { border-bottom: none; }
+    .finding-code {
+      font-family: var(--mono);
+      font-weight: 600;
+    }
+    .thumb {
+      width: 48px;
+      height: 36px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: block;
+    }
+    .findings-truncate {
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .priority-high { color: var(--error); font-weight: 600; }
+    .priority-medium { color: var(--warning); font-weight: 600; }
+    .priority-low { color: var(--success); font-weight: 600; }
+    
+    /* Expanded row */
+    .expanded-row {
+      display: none;
+    }
+    .expanded-row.show {
+      display: table-row;
+    }
+    .expanded-content {
+      padding: 16px;
+      background: var(--surface-2);
+    }
+    .expanded-grid {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .expanded-image {
+      width: 200px;
+      height: 150px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .expanded-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .expanded-text h4 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-3);
+      margin: 0 0 6px;
+    }
+    .expanded-text p {
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 0 0 12px;
+      color: var(--text);
+    }
+    .expanded-text p:last-child { margin-bottom: 0; }
+    
+    /* Approval bar */
+    .approval-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: var(--warning-soft);
+      border-top: 1px solid var(--warning);
+      gap: 16px;
+    }
+    .approval-bar.approved {
+      background: var(--success-soft);
+      border-top-color: var(--success);
+    }
+    .approval-msg {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .approval-msg svg {
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin-right: 6px;
+      color: var(--warning);
+    }
+    .approval-bar.approved .approval-msg svg { color: var(--success); }
+    .approval-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-approve {
+      background: var(--success);
+      color: white;
+      border-color: var(--success);
+    }
+    .btn-approve:hover {
+      background: #1e5738;
+      border-color: #1e5738;
+    }
+    .btn-request {
+      background: var(--surface);
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">b</div>
+        <span>brightr<span class="dot">.AI</span></span>
+      </div>
+      <nav>
+        <a href="new-analysis.html">New Analysis</a>
+        <a href="reports-list.html" class="active">Reports</a>
+      </nav>
+    </div>
+
+    <!-- Subbar -->
+    <div class="subbar">
+      <a href="reports-list.html" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back to Reports
+      </a>
+      <span class="report-title">Executive report <strong>RF-A1B2C3D4</strong></span>
+      <div class="actions">
+        <button class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download PDF
+        </button>
+        <button class="btn" id="shareBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share
+        </button>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="content">
+      <!-- Left: summary -->
+      <aside class="summary-col">
+        <div class="summary-card">
+          <h1 class="user-report-id">MOD3 CAT1P2 3V-1107</h1>
+          <p class="system-report-id">System report: RF-A1B2C3D4</p>
+          <div class="meta-list">
+            <div><strong>Plant:</strong> MLNG DUA</div>
+            <div><strong>System:</strong> 2700</div>
+            <div><strong>Preparer:</strong> Ahmad R.</div>
+            <div><strong>Reviewer:</strong> Lee K.</div>
+            <div><strong>Approver:</strong> Director VI</div>
+            <div><strong>Submitted:</strong> 16 May 2026, 14:32 UTC</div>
+          </div>
+          <p class="summary-prose">
+            Twelve findings across piping and supports; three high-priority TBR items require scheduling within 30 days. Two areas flagged for insulation removal (TBS) before NDT.
+          </p>
+        </div>
+
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Findings</div>
+            <div class="stat-value">12</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">High priority</div>
+            <div class="stat-value high">3</div>
+            <div class="stat-caption">TBR required</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">TBS actions</div>
+            <div class="stat-value medium">2</div>
+            <div class="stat-caption">Insulation removal</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Avg CoF</div>
+            <div class="stat-value">3.2</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right: findings -->
+      <main class="findings-col">
+        <h2 class="section-title">Findings summary</h2>
+        <div class="findings-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Code</th>
+                <th>Equipment ID</th>
+                <th>Findings</th>
+                <th>Rust</th>
+                <th>CoF</th>
+                <th>Rec.</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="finding-row" data-id="1">
+                <td><span class="thumb"></span></td>
+                <td class="finding-code">IMG-001</td>
+                <td>6CG 2732 M</td>
+                <td class="findings-truncate">External corrosion approx. 300×200 mm at 6 o'clock position. Pitting depth estimated 2-3mm.</td>
+                <td>R4</td>
+                <td>3</td>
+                <td>TBR</td>
+                <td class="priority-high">High</td>
+              </tr>
+              <tr class="expanded-row" data-parent="1">
+                <td colspan="8">
+                  <div class="expanded-content">
+                    <div class="expanded-grid">
+                      <div class="expanded-image">
+                        <svg xmlns='http://www.w3.org/2000/svg' width='200' height='150' viewBox='0 0 200 150'>
+                          <defs>
+                            <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+                              <stop offset='0' stop-color='#404040'/>
+                              <stop offset='1' stop-color='#202020'/>
+                            </linearGradient>
+                          </defs>
+                          <rect fill='url(#g)' width='200' height='150'/>
+                          <rect x='40' y='50' width='120' height='60' fill='#656565' rx='3'/>
+                          <ellipse cx='70' cy='80' rx='20' ry='10' fill='#c93434' opacity='0.7'/>
+                        </svg>
+                      </div>
+                      <div class="expanded-text">
+                        <h4>Findings</h4>
+                        <p>External corrosion on 16" piping, approx. 300×200 mm area at 6 o'clock position. Pitting depth estimated 2-3mm. Coating breakdown visible over 60% of affected zone. No through-wall observed.</p>
+                        <h4>Recommendation</h4>
+                        <p>TBR P2: sectional spool replacement or blend-grind & weld build-up per PTS / ASME PCC2. Target completion: next planned shutdown. NDT verification required pre- and post-repair.</p>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr class="finding-row" data-id="2">
+                <td><span class="thumb"></span></td>
+                <td class="finding-code">IMG-002</td>
+                <td>6CG 2732 M</td>
+                <td class="findings-truncate">Surface corrosion, small area — suitable for touch-up painting.</td>
+                <td>R3</td>
+                <td>2</td>
+                <td>TBP</td>
+                <td class="priority-low">Low</td>
+              </tr>
+              <tr class="expanded-row" data-parent="2">
+                <td colspan="8">
+                  <div class="expanded-content">
+                    <div class="expanded-grid">
+                      <div class="expanded-image">
+                        <svg xmlns='http://www.w3.org/2000/svg' width='200' height='150' viewBox='0 0 200 150'>
+                          <rect fill='#b8b5ac' width='200' height='150'/>
+                          <ellipse cx='100' cy='75' rx='20' ry='12' fill='#a08070' opacity='0.5'/>
+                        </svg>
+                      </div>
+                      <div class="expanded-text">
+                        <h4>Findings</h4>
+                        <p>Surface corrosion, small area — suitable for touch-up painting.</p>
+                        <h4>Recommendation</h4>
+                        <p>TBP: touch-up painting per PTS 15.20.03.</p>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr class="finding-row" data-id="3">
+                <td><span class="thumb"></span></td>
+                <td class="finding-code">IMG-003</td>
+                <td>3V-1107</td>
+                <td class="findings-truncate">Damaged insulation with exposed steel; CUI suspected — open for inspection.</td>
+                <td>R4</td>
+                <td>4</td>
+                <td>TBS</td>
+                <td class="priority-high">High</td>
+              </tr>
+              <tr class="expanded-row" data-parent="3">
+                <td colspan="8">
+                  <div class="expanded-content">
+                    <div class="expanded-grid">
+                      <div class="expanded-image">
+                        <svg xmlns='http://www.w3.org/2000/svg' width='200' height='150' viewBox='0 0 200 150'>
+                          <rect fill='#908b80' width='200' height='150'/>
+                          <rect x='40' y='40' width='100' height='62' fill='#d4af6c' opacity='0.7' rx='2'/>
+                        </svg>
+                      </div>
+                      <div class="expanded-text">
+                        <h4>Findings</h4>
+                        <p>Damaged insulation with exposed steel; CUI suspected — open for inspection.</p>
+                        <h4>Recommendation</h4>
+                        <p>TBS: strip insulation for visual / NDT; assess CUI then TBR/TBP as applicable.</p>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+
+    <!-- Approval bar (only shown if status != approved) -->
+    <div class="approval-bar">
+      <div class="approval-msg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        This report is awaiting your review.
+      </div>
+      <div class="approval-actions">
+        <button class="btn btn-request">Request changes</button>
+        <button class="btn btn-approve">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Approve report
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Expandable rows
+    document.querySelectorAll('.finding-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const id = row.dataset.id;
+        const expandedRow = document.querySelector(`.expanded-row[data-parent="${id}"]`);
+        const wasExpanded = row.classList.contains('expanded');
+        
+        // Collapse all
+        document.querySelectorAll('.finding-row').forEach(r => r.classList.remove('expanded'));
+        document.querySelectorAll('.expanded-row').forEach(r => r.classList.remove('show'));
+        
+        // Expand this one if it wasn't already
+        if (!wasExpanded) {
+          row.classList.add('expanded');
+          expandedRow.classList.add('show');
+        }
+      });
+    });
+
+    // Share button (placeholder)
+    document.getElementById('shareBtn').addEventListener('click', () => {
+      alert('Share dialog would open here:\n\n- Email PDF\n- Copy shareable link');
+    });
+  </script>
+</body>
+</html>

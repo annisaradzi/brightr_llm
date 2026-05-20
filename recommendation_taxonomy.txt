@@ -1,0 +1,29 @@
+FINDINGS RECOMMENDATION CODES (select exactly one primary recommendationCode):
+
+TBR � To Be Repaired
+Permanent repair per code/standard. Methods include replacement (sectional/component/item),
+weld overlay, insert plate/patch. Refer PTS or ASME PCC2.
+
+TBRy � To Be Rectified
+Acceptable rectification other than TBR; usually non-pressure-part findings.
+Examples: re-tighten loose bolts/nuts; install missing PV nameplate; provide insulation inspection window.
+
+TBP � To Be Painted
+Painting per PTS 15.20.03 or equivalent: maintenance/spot/touch-up, total recoating during TSM,
+approved alternatives (e.g. Rust Stabilizer).
+
+TBM � To Be Monitored
+For internal/RL-related findings: monitor thickness via spot UTTG, UT scanning/corrosion mapping, or profile RT.
+
+TBS � To Strip Off (Insulation)
+Remove insulation for visual inspection or suitable NDT; assess CUI (may lead to TBR/TBP).
+
+Rust grades (ISO 8501 visual): Ri1, Ri2, R3, R4, R5
+CoF: integer 1-5 (consequence of failure)
+Findings priority and SAP priority: low | medium | high
+Equipment type: piping | pressure_vessel | flange | structural | other
+
+Set required flags when applicable:
+- furtherInspection: true if extent unclear or TBM monitoring needed
+- openInsulation: true if TBS or insulation access required
+- scaffold: true if elevated/large-area access implied

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>brightr.AI — Report RF-A1B2C3D4 (mockup)</title>
+  <style>
+    :root {
+      --bg: #f5f5f4;
+      --card: #ffffff;
+      --border: #e7e5e4;
+      --text: #1c1917;
+      --muted: #78716c;
+      --brand: #d85a30;
+      --brand-tint: #faece7;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 24px; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .logo {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.3px;
+    }
+    .logo span { color: var(--brand); }
+    nav {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+    nav a:hover { color: var(--text); }
+    nav a.active {
+      color: var(--text);
+      font-weight: 500;
+    }
+    .detail-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .detail-toolbar .back {
+      color: var(--brand);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .detail-toolbar .back:hover { text-decoration: underline; }
+    .detail-title {
+      font-size: 13px;
+      color: var(--muted);
+      flex: 1;
+      min-width: 200px;
+    }
+    .detail-title strong { color: var(--text); }
+    .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-outline {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-primary {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid var(--brand);
+      background: var(--brand);
+      color: #fff;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 20px; font-weight: 500; margin: 0 0 8px; }
+    .meta { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .summary { font-size: 14px; line-height: 1.6; margin-top: 16px; }
+    .btn-card {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 10px 16px;
+      background: var(--brand);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    h2 { font-size: 16px; font-weight: 500; margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+    th { background: #fafaf9; font-weight: 600; }
+    tr:nth-child(even) { background: #fafaf9; }
+    .thumb {
+      width: 48px;
+      height: 36px;
+      background: #e7e5e4;
+      border-radius: 4px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">brightr<span>.AI</span></div>
+      <nav>
+        <a href="new-analysis-mockup.html">New Analysis</a>
+        <a href="reports-list-mockup.html" class="active">Reports</a>
+      </nav>
+    </header>
+
+    <div class="detail-toolbar">
+      <a href="reports-list-mockup.html" class="back">&larr; Back to Reports</a>
+      <span class="detail-title">Executive report <strong>RF-A1B2C3D4</strong></span>
+      <div class="detail-actions">
+        <a href="#" class="btn-primary">Download PDF</a>
+        <button type="button" class="btn-outline">Share</button>
+      </div>
+    </div>
+
+    <main>
+      <section class="card">
+        <h1>RF-A1B2C3D4</h1>
+        <p class="meta">
+          User report: MOD3 CAT1P2 3V-1107 &middot; Plant: MLNG DUA &middot; System: 2700<br />
+          Preparer: Ahmad R. &middot; Reviewer: Lee K. &middot; Approver: Director VI<br />
+          Submitted: 16 May 2026, 14:32 UTC
+        </p>
+        <p class="summary">
+          Executive summary: Twelve findings across piping and supports; three high-priority TBR items require scheduling within 30 days. Two areas flagged for insulation removal (TBS) before NDT.
+        </p>
+        <a href="#" class="btn-card">Download PDF</a>
+      </section>
+
+      <section class="card">
+        <h2>Findings summary</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Code</th>
+              <th>Equipment ID</th>
+              <th>Findings</th>
+              <th>Rust</th>
+              <th>CoF</th>
+              <th>Rec.</th>
+              <th>Priority</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="thumb" aria-hidden="true"></span></td>
+              <td>IMG-001</td>
+              <td>6CG 2732 M</td>
+              <td>External corrosion approx. 300&times;200 mm at 6 o'clock…</td>
+              <td>R4</td>
+              <td>3</td>
+              <td>TBR</td>
+              <td>High</td>
+            </tr>
+            <tr>
+              <td><span class="thumb" aria-hidden="true"></span></td>
+              <td>IMG-002</td>
+              <td>6CG 2732 M</td>
+              <td>Surface corrosion, small area — touch-up paint candidate</td>
+              <td>R3</td>
+              <td>2</td>
+              <td>TBP</td>
+              <td>Low</td>
+            </tr>
+            <tr>
+              <td><span class="thumb" aria-hidden="true"></span></td>
+              <td>IMG-003</td>
+              <td>3V-1107</td>
+              <td>Damaged insulation, CUI suspected — open for inspection</td>
+              <td>R4</td>
+              <td>4</td>
+              <td>TBS</td>
+              <td>High</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

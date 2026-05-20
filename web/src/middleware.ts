@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/") {
+  if (pathname === "/" || pathname.startsWith("/reports")) {
     if (!email) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
@@ -24,5 +24,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login"],
+  matcher: ["/", "/login", "/reports/:path*"],
 };

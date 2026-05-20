@@ -1,0 +1,20 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: brightr-api:dev
+    container_name: brightr-api
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      DATABASE_URL: sqlite:////data/brightr.db
+      STORAGE_ROOT: /data/storage
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3-flash-preview}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY required}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+    volumes:
+      - ./.data:/data
+    restart: unless-stopped
