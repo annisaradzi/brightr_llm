@@ -33,7 +33,11 @@ Health check: `GET {INTERNAL_API_URL}/health` ? `{"ok": true}`.
 
 ## 4. Limits and plans
 
-- **Function duration:** The analyze Route Handler waits for FastAPI + Gemini. [Vercel Hobby](https://vercel.com/docs/functions/limitations) enforces a short max duration (~10s); slow model calls may **504**. The route sets `maxDuration = 60`; you need a plan that allows that (e.g. Pro) or a different architecture for long runs.
+- **Function duration:** The analyze / submit / image-upload Route Handlers wait for FastAPI + Gemini + PDF generation. Plan caps (per [Vercel docs](https://vercel.com/docs/functions/limitations)):
+  - Hobby: ~10s (these routes will **504** on slow runs).
+  - **Pro: up to 300s** ? this project's heavy routes are set to `maxDuration = 300` (analyze, submit, images upload).
+  - Enterprise: up to 900s.
+  Setting `maxDuration` higher than your plan allows has no effect; Vercel still enforces the plan cap.
 - **Request body size:** Vercel serverless request bodies are typically **~4.5MB**. The Python API may allow up to 10MB; very large images can fail at the Vercel hop first.
 
 ## 5. Post-deploy checks
