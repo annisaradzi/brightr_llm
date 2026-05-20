@@ -148,7 +148,7 @@ def _load_optional_brand_logo_from_disk() -> Optional[Image.Image]:
     return None
 
 
-def _brand_logo_flowable(max_width: float) -> RLImage:
+def brand_logo_flowable(max_width: float) -> RLImage:
     pil = _load_optional_brand_logo_from_disk() or _build_brightr_logo_pil()
     pil = _tight_crop_rgba(pil)
     buf = io.BytesIO()
@@ -168,6 +168,9 @@ def _brand_logo_flowable(max_width: float) -> RLImage:
     return logo
 
 
+_brand_logo_flowable = brand_logo_flowable
+
+
 @dataclass
 class Detection:
     label: str
@@ -182,6 +185,62 @@ class AnalysisResult:
     recommendations: List[str]
     raw_text: str
     detections: List[Detection] = field(default_factory=list)
+
+
+@dataclass
+class StructuredInspectionAnalysis:
+    findings_text: str
+    recommendation_text: str
+    rust_grade: Optional[str]
+    cof: Optional[int]
+    findings_priority: Optional[str]
+    sap_priority: Optional[str]
+    equipment_type: Optional[str]
+    equipment_id: Optional[str]
+    recommendation_code: Optional[str]
+    further_inspection: bool
+    open_insulation: bool
+    scaffold: bool
+    ai_confidence: Optional[float]
+    detections: List[Detection] = field(default_factory=list)
+    raw_text: str = ""
+
+
+STRUCTURED_SYSTEM_PROMPT_SUFFIX = """
+Output requirements (STRICT):
+- Return JSON ONLY (no markdown, no code fences, no extra text).
+- Use EXACT keys below.
+
+Schema:
+{
+  "findingsText": "detailed narrative findings from the image",
+  "recommendationText": "full recommendation wording including code e.g. TBR P2",
+  "rustGrade": "R3",
+  "cof": 3,
+  "findingsPriority": "low",
+  "sapPriority": "medium",
+  "equipmentType": "piping",
+  "equipmentId": "EQ-SIM-001",
+  "recommendationCode": "TBR",
+  "furtherInspection": false,
+  "openInsulation": false,
+  "scaffold": false,
+  "aiConfidence": 0.85,
+  "detections": [
+    {
+      "label": "External corrosion",
+      "confidence": 0.87,
+      "box": { "x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0 }
+    }
+  ]
+}
+rustGrade must be one of: Ri1, Ri2, R3, R4, R5
+recommendationCode must be one of: TBR, TBRy, TBP, TBM, TBS
+findingsPriority and sapPriority: low | medium | high
+equipmentType: piping | pressure_vessel | flange | structural | other
+cof: integer 1-5
+If unknown, state uncertainty in findingsText; use null only when truly unknowable.
+"""
 
 
 def _now_utc() -> datetime:
@@ -340,6 +399,219 @@ def _load_system_prompt() -> str:
     return prompt
 
 
+def _load_structured_prompt() -> str:
+    taxonomy_path = _MODULE_DIR / "recommendation_taxonomy.txt"
+    taxonomy = ""
+    try:
+        if taxonomy_path.is_file():
+            taxonomy = taxonomy_path.read_text(encoding="utf-8").strip()
+    except Exception:
+        pass
+    base = (
+        "You are an oil & gas visual inspection engineer assessing corrosion "
+        "from an equipment image.\n\n"
+        + (taxonomy + "\n\n" if taxonomy else "")
+        + STRUCTURED_SYSTEM_PROMPT_SUFFIX
+    )
+    return base
+
+
+def _norm_rust_grade(v: Any) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    mapping = {"RI1": "Ri1", "RI2": "Ri2", "R1": "Ri1", "R2": "Ri2"}
+    upper = s.upper().replace(" ", "")
+    if upper in mapping:
+        return mapping[upper]
+    if s in ("Ri1", "Ri2", "R3", "R4", "R5"):
+        return s
+    if upper in ("R3", "R4", "R5"):
+        return upper
+    return None
+
+
+def _norm_priority(v: Any) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip().lower()
+    return s if s in ("low", "medium", "high") else None
+
+
+def _norm_rec_code(v: Any) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    codes = ("TBR", "TBRy", "TBP", "TBM", "TBS")
+    for c in codes:
+        if s.upper() == c.upper():
+            return c
+    return None
+
+
+def parse_gemini_structured_response(response_text: str) -> StructuredInspectionAnalysis:
+    obj = _extract_first_json_object(response_text)
+    if not isinstance(obj, dict):
+        cleaned = (response_text or "").strip()
+        return StructuredInspectionAnalysis(
+            findings_text=cleaned[:2000] if cleaned else "No response",
+            recommendation_text="",
+            rust_grade=None,
+            cof=None,
+            findings_priority=None,
+            sap_priority=None,
+            equipment_type=None,
+            equipment_id=None,
+            recommendation_code=None,
+            further_inspection=False,
+            open_insulation=False,
+            scaffold=False,
+            ai_confidence=None,
+            detections=[],
+            raw_text=response_text or "",
+        )
+
+    detections = _parse_detections(obj.get("detections"))
+    conf: Optional[float] = None
+    if obj.get("aiConfidence") is not None:
+        try:
+            c = float(obj["aiConfidence"])
+            if 0.0 <= c <= 1.0:
+                conf = c
+        except (TypeError, ValueError):
+            pass
+    if conf is None and detections:
+        cs = [d.confidence for d in detections if d.confidence is not None]
+        if cs:
+            conf = sum(cs) / len(cs)
+
+    cof_val: Optional[int] = None
+    if obj.get("cof") is not None:
+        try:
+            n = int(obj["cof"])
+            if 1 <= n <= 5:
+                cof_val = n
+        except (TypeError, ValueError):
+            pass
+
+    return StructuredInspectionAnalysis(
+        findings_text=str(obj.get("findingsText", "")).strip()
+        or str(obj.get("findings", "")).strip(),
+        recommendation_text=str(obj.get("recommendationText", "")).strip(),
+        rust_grade=_norm_rust_grade(obj.get("rustGrade")),
+        cof=cof_val,
+        findings_priority=_norm_priority(obj.get("findingsPriority")),
+        sap_priority=_norm_priority(obj.get("sapPriority")),
+        equipment_type=str(obj.get("equipmentType", "")).strip().lower() or None,
+        equipment_id=str(obj.get("equipmentId", "")).strip() or None,
+        recommendation_code=_norm_rec_code(obj.get("recommendationCode")),
+        further_inspection=bool(obj.get("furtherInspection", False)),
+        open_insulation=bool(obj.get("openInsulation", False)),
+        scaffold=bool(obj.get("scaffold", False)),
+        ai_confidence=conf,
+        detections=detections,
+        raw_text=response_text or "",
+    )
+
+
+def detections_to_bbox_list(detections: List[Detection]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for d in detections:
+        out.append(
+            {
+                "label": d.label,
+                "confidence": d.confidence,
+                "box": d.box,
+            }
+        )
+    return out
+
+
+def structured_result_to_item_fields(structured: StructuredInspectionAnalysis) -> Dict[str, Any]:
+    return {
+        "aiFindings": structured.findings_text,
+        "aiRecommendation": structured.recommendation_text,
+        "findings": structured.findings_text,
+        "recommendation": structured.recommendation_text,
+        "rustGrade": structured.rust_grade,
+        "cof": structured.cof,
+        "findingsPriority": structured.findings_priority,
+        "sapPriority": structured.sap_priority,
+        "equipmentType": structured.equipment_type,
+        "equipmentId": structured.equipment_id,
+        "recommendationCode": structured.recommendation_code,
+        "furtherInspection": structured.further_inspection,
+        "openInsulation": structured.open_insulation,
+        "scaffold": structured.scaffold,
+        "aiConfidence": structured.ai_confidence,
+        "aiBoundingBoxes": detections_to_bbox_list(structured.detections),
+    }
+
+
+# VLM HTTP client disabled temporarily — use Gemini session path or re-enable via session_service.
+# def analyze_image_with_vlm(
+#     image_path: Path,
+#     image_id: str,
+#     endpoint_url: str,
+#     timeout_s: int = 120,
+# ) -> Tuple[StructuredInspectionAnalysis, str]:
+#     """
+#     POST image_id + image file to the in-house VLM Flask service.
+#     Response schema matches structured Gemini output; reuse the same parser.
+#     """
+#     base = endpoint_url.rstrip("/")
+#     url = f"{base}/analyze"
+#
+#     path = Path(image_path)
+#     if not path.is_file():
+#         raise RuntimeError(f"Image file not found: {path}")
+#
+#     with path.open("rb") as f:
+#         files = {"image": (path.name, f, "application/octet-stream")}
+#         data = {"image_id": image_id}
+#         try:
+#             resp = requests.post(url, data=data, files=files, timeout=timeout_s)
+#         except requests.RequestException as e:
+#             raise RuntimeError(f"VLM request failed ({url}): {e}") from e
+#
+#     if resp.status_code not in (200, 422):
+#         detail = resp.text[:500] if resp.text else resp.reason
+#         raise RuntimeError(f"VLM returned HTTP {resp.status_code}: {detail}")
+#
+#     try:
+#         payload = resp.json()
+#     except json.JSONDecodeError as e:
+#         raise RuntimeError(f"VLM returned non-JSON response: {e}") from e
+#
+#     raw_output = str(payload.get("rawOutput") or "")
+#     result_obj = payload.get("result")
+#     if not isinstance(result_obj, dict):
+#         err = payload.get("error") or "VLM response missing result object"
+#         raise RuntimeError(str(err))
+#
+#     parsed = parse_gemini_structured_response(json.dumps(result_obj, ensure_ascii=False))
+#     return parsed, raw_output
+
+
+def analyze_image_structured_with_gemini(
+    image: Image.Image,
+    api_key: str,
+) -> Tuple[StructuredInspectionAnalysis, str]:
+    import google.generativeai as genai
+
+    genai.configure(api_key=api_key)
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+    model = genai.GenerativeModel(model_name)
+    prompt = _load_structured_prompt()
+    try:
+        resp = model.generate_content([prompt, image])
+        raw_text = getattr(resp, "text", "") or ""
+        parsed = parse_gemini_structured_response(raw_text)
+        return parsed, raw_text
+    except Exception as e:
+        raise RuntimeError(f"Gemini structured analysis failed ({model_name}): {e}") from e
+
+
 def analyze_image_with_gemini(
     image: Image.Image,
     api_key: str,
@@ -421,7 +693,7 @@ def create_pdf_report(
     )
 
     story: List[Any] = []
-    story.append(_brand_logo_flowable(1.65 * inch))
+    story.append(brand_logo_flowable(1.65 * inch))
     story.append(Spacer(1, 6))
     story.append(Paragraph("Image Analysis Report", title_style))
 

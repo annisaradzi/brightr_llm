@@ -61,6 +61,9 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+brightr.db
+brightr.db-journal
+storage/
 
 # Flask stuff:
 instance/
@@ -208,3 +211,17 @@ marimo/_lsp/
 __marimo__/
 template
 reports/
+
+# Local-only binary assets (slides, demo PPTX) — do not ship to the Docker image.
+slide/
+
+# Local Docker volume bind-mount used by docker-compose.yml.
+.data/
+
+# Generated PDF outputs that landed at repo root from older runs.
+/image_analysis_report_*.pdf
+/executive_report.pdf
+/docs/report-*.pdf
+
+# Next.js build artifacts.
+web/.next/

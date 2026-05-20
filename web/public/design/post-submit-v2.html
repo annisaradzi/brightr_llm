@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>brightr.AI — Report Submitted</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f7f6f4;
+      --surface: #ffffff;
+      --surface-2: #fafaf8;
+      --border: #e6e4df;
+      --border-strong: #d4d1ca;
+      --text: #1a1916;
+      --text-2: #57544d;
+      --text-3: #8b867d;
+      --brand: #d85a30;
+      --brand-soft: #faece7;
+      --success: #2d7a4f;
+      --success-soft: #e3f1e8;
+      --radius: 10px;
+      --mono: "Geist Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Geist", -apple-system, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .panel {
+      max-width: 560px;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 36px;
+      box-shadow: 0 4px 24px rgba(26, 25, 22, 0.06), 0 1px 2px rgba(26, 25, 22, 0.04);
+    }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .status-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--success-soft);
+      color: var(--success);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+    .status-text h1 {
+      font-size: 19px;
+      font-weight: 600;
+      margin: 0 0 2px;
+      letter-spacing: -0.01em;
+    }
+    .status-text p {
+      font-size: 13px;
+      color: var(--text-2);
+      margin: 0;
+    }
+    
+    .lead {
+      font-size: 14px;
+      color: var(--text-2);
+      line-height: 1.55;
+      margin: 0 0 24px;
+    }
+    
+    .meta-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px 16px;
+      padding: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+    .meta-label {
+      color: var(--text-3);
+      font-weight: 500;
+    }
+    .meta-value {
+      color: var(--text);
+      font-weight: 500;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .meta-value.user-report {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 13px;
+    }
+    
+    .workflow {
+      padding: 14px 16px;
+      background: var(--success-soft);
+      border-left: 3px solid var(--success);
+      border-radius: 6px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .workflow strong { font-weight: 600; }
+    
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .btn {
+      flex: 1;
+      padding: 11px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      text-decoration: none;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: all .12s;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--brand);
+      color: white;
+      box-shadow: 0 1px 2px rgba(216, 90, 48, 0.2);
+    }
+    .btn-primary:hover {
+      background: #c24d27;
+      box-shadow: 0 2px 4px rgba(216, 90, 48, 0.25);
+    }
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 1px 2px rgba(26, 25, 22, 0.04);
+    }
+    .btn-secondary:hover {
+      background: var(--surface-2);
+      border-color: var(--text-3);
+    }
+    .btn svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+    
+    .links {
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .link {
+      font-size: 13px;
+      color: var(--brand);
+      text-decoration: none;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 0;
+      transition: opacity .12s;
+    }
+    .link:hover { opacity: 0.7; }
+    .link svg {
+      width: 14px;
+      height: 14px;
+    }
+    .link-muted {
+      color: var(--text-2);
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .panel {
+      animation: fadeInUp 0.35s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="status">
+      <div class="status-icon">✓</div>
+      <div class="status-text">
+        <h1>Report submitted successfully</h1>
+        <p>RF-A1B2C3D4</p>
+      </div>
+    </div>
+    
+    <p class="lead">
+      Your executive inspection report has been submitted and is now awaiting review by <strong>Lee K.</strong> You'll receive a notification when the report is approved or if changes are requested.
+    </p>
+    
+    <div class="meta-grid">
+      <span class="meta-label">System report</span>
+      <span class="meta-value">RF-A1B2C3D4</span>
+      
+      <span class="meta-label">User report</span>
+      <span class="meta-value user-report">MOD3 CAT1P2 3V-1107</span>
+      
+      <span class="meta-label">Submitted</span>
+      <span class="meta-value">16 May 2026, 14:32 UTC</span>
+      
+      <span class="meta-label">Status</span>
+      <span class="meta-value">Awaiting review</span>
+    </div>
+    
+    <div class="workflow">
+      <strong>Next steps:</strong> The reviewer will be notified via email. Typical review time is 1-2 business days. You can edit this report until it's approved.
+    </div>
+    
+    <div class="actions">
+      <a href="reports-list.html" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back to Reports
+      </a>
+      <a href="#" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download PDF
+      </a>
+    </div>
+    
+    <div class="links">
+      <a href="reports-detail.html" class="link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        View full report
+      </a>
+      <a href="reports-detail.html?mode=edit" class="link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit this report
+      </a>
+      <a href="new-analysis.html" class="link link-muted">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Start new analysis
+      </a>
+    </div>
+  </div>
+</body>
+</html>

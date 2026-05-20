@@ -1,0 +1,58 @@
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# Editors / tooling
+.vscode
+.idea
+.cursor
+.cursorignore
+.cursorindexingignore
+
+# Frontend (deployed separately on Vercel)
+web
+
+# Out-of-scope services
+vlm
+app.py
+
+# Local data / artifacts that must never enter the image
+storage
+reports
+slide
+docs
+.data
+agent-transcripts
+
+# Databases
+*.db
+*.db-journal
+
+# Python build/runtime junk
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+.venv
+venv
+env
+
+# Test/output binaries at repo root
+*.pdf
+*.pptx
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Node / Next.js artifacts (defensive in case web/ ever sneaks in)
+node_modules
+.next
+
+# OS junk
+.DS_Store
+Thumbs.db

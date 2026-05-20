@@ -1,0 +1,37 @@
+# Render blueprint for the Brightr backend.
+# Push to GitHub, then in Render: New > Blueprint > select repo.
+# Notes:
+#  - Starter plan ($7/mo) is the minimum because Render Free tier sleeps
+#    and does not support disks. Plan = "free" will fail at deploy time.
+#  - Replace the Dockerfile-level PORT default if you change it here.
+#  - Secrets (GEMINI_API_KEY, INTERNAL_API_KEY, CORS_ORIGINS) are marked
+#    sync: false so Render prompts for them on first deploy.
+
+services:
+  - type: web
+    name: brightr-api
+    runtime: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: brightr-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL
+        value: sqlite:////data/brightr.db
+      - key: STORAGE_ROOT
+        value: /data/storage
+      - key: GEMINI_MODEL
+        value: gemini-3-flash-preview
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: INTERNAL_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
