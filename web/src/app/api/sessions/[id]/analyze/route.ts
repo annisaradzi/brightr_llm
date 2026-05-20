@@ -8,7 +8,6 @@ import {
 } from "@/lib/internal-api";
 
 export const runtime = "nodejs";
-// Vercel Pro allows up to 300s. Session analyze runs Gemini per image and can exceed 60s.
 export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
