@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -54,3 +55,23 @@ def write_item_sidecars(
 def load_item_jpeg_path(session_id: str, item_id: str) -> Optional[Path]:
     p = session_dir(session_id) / f"{item_id}.jpg"
     return p if p.is_file() else None
+
+
+def delete_item_artifacts(session_id: str, item_id: str) -> None:
+    """Remove on-disk files for an inspection item (best-effort)."""
+    base = session_dir(session_id)
+    for name in (
+        f"{item_id}.jpg",
+        f"{item_id}_findings.txt",
+        f"{item_id}_bboxes.json",
+    ):
+        p = base / name
+        if p.is_file():
+            p.unlink()
+
+
+def delete_session_dir(session_id: str) -> None:
+    """Remove all on-disk artifacts for a session (best-effort)."""
+    base = STORAGE_ROOT / "sessions" / session_id
+    if base.is_dir():
+        shutil.rmtree(base, ignore_errors=True)

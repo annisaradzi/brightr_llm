@@ -8,6 +8,8 @@ import {
 } from "@/lib/internal-api";
 
 export const runtime = "nodejs";
+// Vercel Pro allows up to 300s. Submit triggers executive PDF generation upstream.
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 

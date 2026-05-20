@@ -58,3 +58,22 @@ export async function requestReportChanges(
     body: JSON.stringify({ comment }),
   });
 }
+
+export type BulkDeleteReportsResponse = {
+  deleted: string[];
+  failed: { id: string; reason: string }[];
+};
+
+export async function deleteReport(reportId: string): Promise<{ ok: boolean; id: string }> {
+  return apiFetch(`/api/reports/${reportId}`, { method: "DELETE" });
+}
+
+export async function deleteReportsBulk(
+  reportIds: string[]
+): Promise<BulkDeleteReportsResponse> {
+  return apiFetch<BulkDeleteReportsResponse>("/api/reports/bulk-delete", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ reportIds }),
+  });
+}

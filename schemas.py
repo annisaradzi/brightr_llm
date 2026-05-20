@@ -166,3 +166,22 @@ class ReportActionOut(BaseModel):
     id: str
     status: str
     message: str
+
+
+class DeleteReportOut(BaseModel):
+    ok: bool = True
+    id: str
+
+
+class BulkDeleteReportsRequest(BaseModel):
+    reportIds: List[str] = Field(default_factory=list)
+
+
+class BulkDeleteFailedItem(BaseModel):
+    id: str
+    reason: str
+
+
+class BulkDeleteReportsResponse(BaseModel):
+    deleted: List[str] = Field(default_factory=list)
+    failed: List[BulkDeleteFailedItem] = Field(default_factory=list)

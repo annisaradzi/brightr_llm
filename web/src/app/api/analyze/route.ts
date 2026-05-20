@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
 export const runtime = "nodejs";
-/** Vercel Pro+ can use up to 60s+ depending on plan; Hobby is capped at ~10s (see web/VERCEL.md). */
-export const maxDuration = 60;
+/** Vercel Pro allows up to 300s; Hobby is capped at ~10s (see web/VERCEL.md). */
+export const maxDuration = 300;
 
 const INTERNAL = "http://127.0.0.1:8000";
 

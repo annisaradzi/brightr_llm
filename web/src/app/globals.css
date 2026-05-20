@@ -421,6 +421,21 @@ body {
   background: var(--v2-surface-2);
 }
 
+.reports-bulk-btn-danger {
+  color: var(--v2-error);
+  border-color: var(--v2-error);
+}
+
+.reports-bulk-btn-danger:hover {
+  background: var(--v2-error-soft);
+}
+
+.v2-icon-btn-danger:hover {
+  background: var(--v2-error);
+  color: white;
+  border-color: var(--v2-error);
+}
+
 /* ----- Reports list: table ----- */
 .reports-table-wrap {
   background: var(--v2-surface);

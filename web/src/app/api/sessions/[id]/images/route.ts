@@ -8,7 +8,8 @@ import {
 } from "@/lib/internal-api";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Vercel Pro allows up to 300s. Multi-image uploads can take a while end-to-end.
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 

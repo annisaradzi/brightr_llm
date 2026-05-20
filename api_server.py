@@ -33,6 +33,9 @@ from schemas import (
     InspectionItemOut,
     InspectionItemPatch,
     InspectionSessionOut,
+    BulkDeleteReportsRequest,
+    BulkDeleteReportsResponse,
+    DeleteReportOut,
     ReportActionOut,
     ReportDetailOut,
     ReportListResponse,
@@ -161,6 +164,20 @@ def patch_session_item(
     return svc.patch_item(db, session_id, item_id, body)
 
 
+@app.delete(
+    "/api/sessions/{session_id}/items/{item_id}",
+    response_model=InspectionSessionOut,
+)
+def delete_session_item(
+    request: Request,
+    session_id: str,
+    item_id: str,
+    db: Session = Depends(get_db),
+) -> InspectionSessionOut:
+    _require_internal_key(request)
+    return svc.delete_item(db, session_id, item_id)
+
+
 @app.post("/api/sessions/{session_id}/submit", response_model=InspectionSessionOut)
 def submit_session(
     request: Request,
@@ -203,6 +220,16 @@ def list_reports(
     )
 
 
+@app.post("/api/reports/bulk-delete", response_model=BulkDeleteReportsResponse)
+def bulk_delete_reports(
+    request: Request,
+    body: BulkDeleteReportsRequest,
+    db: Session = Depends(get_db),
+) -> BulkDeleteReportsResponse:
+    _require_internal_key(request)
+    return svc.delete_reports_bulk(db, body.reportIds)
+
+
 @app.get("/api/reports/{report_id}", response_model=ReportDetailOut)
 def get_report_detail(
     request: Request,
@@ -211,6 +238,16 @@ def get_report_detail(
 ) -> ReportDetailOut:
     _require_internal_key(request)
     return svc.get_report_detail(db, report_id)
+
+
+@app.delete("/api/reports/{report_id}", response_model=DeleteReportOut)
+def delete_report(
+    request: Request,
+    report_id: str,
+    db: Session = Depends(get_db),
+) -> DeleteReportOut:
+    _require_internal_key(request)
+    return svc.delete_report(db, report_id)
 
 
 @app.post("/api/reports/{report_id}/approve", response_model=ReportActionOut)
