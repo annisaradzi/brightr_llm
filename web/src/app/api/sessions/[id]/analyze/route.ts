@@ -8,7 +8,7 @@ import {
 } from "@/lib/internal-api";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
