@@ -186,6 +186,18 @@ class AnalysisResult:
     raw_text: str
     detections: List[Detection] = field(default_factory=list)
 
+    # New MAVIS VLM nested-schema fields.
+    # These are optional so the old UI/PDF flow remains backward-compatible.
+    component: Optional[str] = None
+    defect_type: Optional[str] = None
+    severity: Optional[str] = None
+    likelihood: Optional[str] = None
+    consequence: Optional[str] = None
+    visual_evidence: Optional[str] = None
+    matched_historical_pattern: Optional[str] = None
+    confidence: Optional[str] = None
+    requires_engineer_review: bool = True
+
 
 @dataclass
 class StructuredInspectionAnalysis:
@@ -209,37 +221,53 @@ class StructuredInspectionAnalysis:
 STRUCTURED_SYSTEM_PROMPT_SUFFIX = """
 Output requirements (STRICT):
 - Return JSON ONLY (no markdown, no code fences, no extra text).
-- Use EXACT keys below.
+- Use EXACT keys and schema below.
 
-Schema:
+Each entry in "findings" MUST follow this EXACT format — no exceptions:
+(V{n}) {COMPONENT IN CAPS} - {concise defect description}. (L:{likelihood_code} C:{consequence_code})
+
+Example:
+(V1) BOLT AND NUT - Coating deterioration with appearance of atmospheric corrosion less than 30% of the bolt and nut surface. Paint deterioration with rust spots. (L:A C:2)
+(V2) FLANGE - Localized corrosion with surface rusting observed around flange connection. (L:B C:3)
+
+The "finding" field must be a single consolidated entry in the same format:
+(V1) {COMPONENT} - {consolidated description}. (L:{likelihood_code} C:{consequence_code})
+
+Do NOT write findings as paragraphs. Do NOT use narrative or conversational language.
+
+EXACT JSON SCHEMA:
 {
-  "findingsText": "detailed narrative findings from the image",
-  "recommendationText": "full recommendation wording including code e.g. TBR P2",
+  "findings": [
+    "(V1) COMPONENT - one-line professional finding. (L:X C:X)",
+    "(V2) COMPONENT - one-line professional finding. (L:X C:X)"
+  ],
+  "finding": "(V1) COMPONENT - consolidated one-line finding. (L:X C:X)",
+  "recommendationText": "TBP. To conduct mechanical cleaning and painting as per applicable coating specification.",
+  "recommendationCode": "TBP",
   "rustGrade": "R3",
   "cof": 3,
-  "findingsPriority": "low",
+  "findingsPriority": "medium",
   "sapPriority": "medium",
   "equipmentType": "piping",
-  "equipmentId": "EQ-SIM-001",
-  "recommendationCode": "TBR",
+  "equipmentId": "",
   "furtherInspection": false,
   "openInsulation": false,
   "scaffold": false,
   "aiConfidence": 0.85,
   "detections": [
     {
-      "label": "External corrosion",
-      "confidence": 0.87,
+      "label": "",
+      "confidence": 0.0,
       "box": { "x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0 }
     }
   ]
 }
+
 rustGrade must be one of: Ri1, Ri2, R3, R4, R5
 recommendationCode must be one of: TBR, TBRy, TBP, TBM, TBS
 findingsPriority and sapPriority: low | medium | high
 equipmentType: piping | pressure_vessel | flange | structural | other
 cof: integer 1-5
-If unknown, state uncertainty in findingsText; use null only when truly unknowable.
 """
 
 
@@ -361,20 +389,92 @@ def _parse_detections(value: Any) -> List[Detection]:
 
 
 def parse_gemini_response(response_text: str) -> AnalysisResult:
+    """Parse model output into AnalysisResult.
+
+    Supports both schemas:
+
+    Old schema:
+    {
+      "summary": "...",
+      "findings": [...],
+      "recommendations": [...],
+      "detections": [...]
+    }
+
+    New MAVIS VLM schema:
+    {
+      "inspection_result": {
+        "summary": "...",
+        "component": "...",
+        "defect_type": "...",
+        "finding": "...",
+        "findings": [...],
+        "recommendations": [...],
+        "visual_evidence": "...",
+        "matched_historical_pattern": "...",
+        "confidence": "low | medium | high",
+        "requires_engineer_review": true,
+        "detections": [...]
+      }
+    }
+    """
     obj = _extract_first_json_object(response_text)
+
     if isinstance(obj, dict):
-        summary = str(obj.get("summary", "")).strip()
-        findings = _normalize_list_str(obj.get("findings"))
-        recommendations = _normalize_list_str(obj.get("recommendations"))
-        detections = _parse_detections(obj.get("detections"))
-        if not summary and (findings or recommendations):
-            summary = "See findings and recommendations below."
+        # New prompt returns everything under inspection_result.
+        # Unwrap it so the existing frontend and PDF generator still work.
+        if isinstance(obj.get("inspection_result"), dict):
+            result_obj = obj["inspection_result"]
+        else:
+            result_obj = obj
+
+        summary = str(result_obj.get("summary", "")).strip()
+
+        # New schema has both "finding" and "findings".
+        findings = _normalize_list_str(result_obj.get("findings"))
+        singular_finding = str(result_obj.get("finding", "")).strip()
+        if singular_finding and singular_finding not in findings:
+            findings = [singular_finding] + findings
+
+        recommendations = _normalize_list_str(result_obj.get("recommendations"))
+        detections = _parse_detections(result_obj.get("detections"))
+
+        component = str(result_obj.get("component", "")).strip() or None
+        defect_type = str(result_obj.get("defect_type", "")).strip() or None
+        severity = str(result_obj.get("severity", "")).strip() or None
+        likelihood = str(result_obj.get("likelihood", "")).strip() or None
+        consequence = str(result_obj.get("consequence", "")).strip() or None
+        visual_evidence = str(result_obj.get("visual_evidence", "")).strip() or None
+        matched_historical_pattern = str(result_obj.get("matched_historical_pattern", "")).strip() or None
+        confidence = str(result_obj.get("confidence", "")).strip() or None
+
+        requires_engineer_review = result_obj.get("requires_engineer_review", True)
+        if isinstance(requires_engineer_review, str):
+            requires_engineer_review = requires_engineer_review.strip().lower() in ("true", "yes", "1")
+        else:
+            requires_engineer_review = bool(requires_engineer_review)
+
+        if not summary:
+            if findings or recommendations:
+                summary = "Draft inspection finding and recommendation generated for engineer review."
+            else:
+                summary = "No summary provided."
+
         return AnalysisResult(
-            summary=summary or "No summary provided.",
+            summary=summary,
             findings=findings,
             recommendations=recommendations,
             raw_text=response_text or "",
             detections=detections,
+            component=component,
+            defect_type=defect_type,
+            severity=severity,
+            likelihood=likelihood,
+            consequence=consequence,
+            visual_evidence=visual_evidence,
+            matched_historical_pattern=matched_historical_pattern,
+            confidence=confidence,
+            requires_engineer_review=requires_engineer_review,
         )
 
     cleaned = (response_text or "").strip()
@@ -399,7 +499,11 @@ def _load_system_prompt() -> str:
     return prompt
 
 
-def _load_structured_prompt() -> str:
+def _load_structured_prompt(
+    query_text: str = "",
+    equipment_type: str | None = None,
+    component: str | None = None,
+) -> str:
     taxonomy_path = _MODULE_DIR / "recommendation_taxonomy.txt"
     taxonomy = ""
     try:
@@ -407,10 +511,27 @@ def _load_structured_prompt() -> str:
             taxonomy = taxonomy_path.read_text(encoding="utf-8").strip()
     except Exception:
         pass
+
+    # RAG: inject top-K historical examples as style reference
+    rag_block = ""
+    if query_text:
+        try:
+            from rag_service import retrieve_examples, format_examples_for_prompt
+            examples = retrieve_examples(
+                query_text=query_text,
+                equipment_type=equipment_type,
+                component=component,
+            )
+            rag_block = format_examples_for_prompt(examples)
+        except Exception as e:
+            print(f"[analysis_service] RAG retrieval skipped: {e}")
+
     base = (
         "You are an oil & gas visual inspection engineer assessing corrosion "
         "from an equipment image.\n\n"
         + (taxonomy + "\n\n" if taxonomy else "")
+        + (_load_system_prompt() + "\n\n")
+        + (rag_block + "\n\n" if rag_block else "")
         + STRUCTURED_SYSTEM_PROMPT_SUFFIX
     )
     return base
@@ -451,6 +572,8 @@ def _norm_rec_code(v: Any) -> Optional[str]:
 
 def parse_gemini_structured_response(response_text: str) -> StructuredInspectionAnalysis:
     obj = _extract_first_json_object(response_text)
+    if isinstance(obj, dict) and isinstance(obj.get("inspection_result"), dict):
+        obj = obj["inspection_result"]
     if not isinstance(obj, dict):
         cleaned = (response_text or "").strip()
         return StructuredInspectionAnalysis(
@@ -494,15 +617,42 @@ def parse_gemini_structured_response(response_text: str) -> StructuredInspection
         except (TypeError, ValueError):
             pass
 
+    # --- new schema: inspection_result with findings array ---
+    findings_list = obj.get("findings", [])
+    if isinstance(findings_list, list):
+        findings_text = "\n".join(str(f) for f in findings_list).strip()
+    else:
+        findings_text = str(findings_list).strip()
+
+    # fallback to old key if new key empty
+    if not findings_text:
+        findings_text = str(obj.get("findingsText", "")).strip()
+    if not findings_text:
+        findings_text = str(obj.get("finding", "")).strip()
+
+    recommendations_list = obj.get("recommendations", [])
+    if isinstance(recommendations_list, list):
+        recommendation_text = "\n".join(str(r) for r in recommendations_list).strip()
+    else:
+        recommendation_text = str(recommendations_list).strip()
+
+    # fallback to old key
+    if not recommendation_text:
+        recommendation_text = str(obj.get("recommendationText", "")).strip()
+
+    # confidence from new schema
+    confidence_str = str(obj.get("confidence", "")).strip().lower()
+    if conf is None and confidence_str in ("low", "medium", "high"):
+        conf = {"low": 0.4, "medium": 0.7, "high": 0.9}.get(confidence_str)
+
     return StructuredInspectionAnalysis(
-        findings_text=str(obj.get("findingsText", "")).strip()
-        or str(obj.get("findings", "")).strip(),
-        recommendation_text=str(obj.get("recommendationText", "")).strip(),
+        findings_text=findings_text,
+        recommendation_text=recommendation_text,
         rust_grade=_norm_rust_grade(obj.get("rustGrade")),
         cof=cof_val,
         findings_priority=_norm_priority(obj.get("findingsPriority")),
         sap_priority=_norm_priority(obj.get("sapPriority")),
-        equipment_type=str(obj.get("equipmentType", "")).strip().lower() or None,
+        equipment_type=str(obj.get("equipmentType", obj.get("component", ""))).strip().lower() or None,
         equipment_id=str(obj.get("equipmentId", "")).strip() or None,
         recommendation_code=_norm_rec_code(obj.get("recommendationCode")),
         further_inspection=bool(obj.get("furtherInspection", False)),
@@ -602,10 +752,15 @@ def analyze_image_structured_with_gemini(
     genai.configure(api_key=api_key)
     model_name = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
     model = genai.GenerativeModel(model_name)
-    prompt = _load_structured_prompt()
+    prompt = _load_structured_prompt(
+        query_text="oil gas equipment corrosion inspection",
+    )
     try:
         resp = model.generate_content([prompt, image])
         raw_text = getattr(resp, "text", "") or ""
+        print("=== RAW GEMINI OUTPUT ===")
+        print(raw_text)
+        print("=== END RAW GEMINI OUTPUT ===")
         parsed = parse_gemini_structured_response(raw_text)
         return parsed, raw_text
     except Exception as e:
@@ -742,6 +897,24 @@ def create_pdf_report(
     story.append(Paragraph("Executive Summary", h_style))
     story.append(Paragraph(analysis.summary or "No summary provided.", body_style))
 
+    overview_items = []
+    if analysis.component:
+        overview_items.append(f"<b>Component:</b> {analysis.component}")
+    if analysis.defect_type:
+        overview_items.append(f"<b>Defect Type:</b> {analysis.defect_type}")
+    if analysis.severity:
+        overview_items.append(f"<b>Severity:</b> {analysis.severity}")
+    if analysis.likelihood:
+        overview_items.append(f"<b>Likelihood:</b> {analysis.likelihood}")
+    if analysis.consequence:
+        overview_items.append(f"<b>Consequence:</b> {analysis.consequence}")
+    if analysis.confidence:
+        overview_items.append(f"<b>Confidence:</b> {analysis.confidence}")
+    if overview_items:
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("Inspection Attributes", h_style))
+        story.append(Paragraph("<br/>".join(overview_items), body_style))
+
     story.append(Spacer(1, 6))
     story.append(Paragraph("Key Findings", h_style))
     if analysis.findings:
@@ -782,6 +955,16 @@ def create_pdf_report(
                 f"- {d.label}{c}: x={b['x']:.3f}, y={b['y']:.3f}, w={b['width']:.3f}, h={b['height']:.3f}"
             )
         story.append(Paragraph("<br/>".join(d_lines), body_style))
+
+    if analysis.visual_evidence:
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("Visual Evidence", h_style))
+        story.append(Paragraph(analysis.visual_evidence, body_style))
+
+    if analysis.matched_historical_pattern:
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("Matched Historical Pattern", h_style))
+        story.append(Paragraph(analysis.matched_historical_pattern, body_style))
 
     story.append(Spacer(1, 10))
     story.append(Paragraph("Recommendations", h_style))
