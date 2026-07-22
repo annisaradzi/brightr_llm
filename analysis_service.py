@@ -758,9 +758,6 @@ def analyze_image_structured_with_gemini(
     try:
         resp = model.generate_content([prompt, image])
         raw_text = getattr(resp, "text", "") or ""
-        print("=== RAW GEMINI OUTPUT ===")
-        print(raw_text)
-        print("=== END RAW GEMINI OUTPUT ===")
         parsed = parse_gemini_structured_response(raw_text)
         return parsed, raw_text
     except Exception as e:

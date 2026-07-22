@@ -225,3 +225,9 @@ slide/
 
 # Next.js build artifacts.
 web/.next/
+
+# Generated RAG vector index — rebuilt on deploy from CSV by start.sh
+data/chroma_db/
+
+# Generated inspection PDF reports (created at runtime, not source)
+reports/*.pdf
