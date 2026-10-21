@@ -20,11 +20,14 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   try {
     const base = getInternalBase();
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const headers = internalHeaders(emailOrRes) as Record<string, string>;
+    if (clientIp) headers["X-Client-IP"] = clientIp;
     const upstream = await fetch(
       `${base}/api/sessions/${id}/analyze?rerun=${rerun}`,
       {
         method: "POST",
-        headers: internalHeaders(emailOrRes),
+        headers,
       }
     );
     return proxyResponse(upstream);

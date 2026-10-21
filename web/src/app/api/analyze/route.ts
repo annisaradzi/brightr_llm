@@ -43,10 +43,12 @@ export async function POST(req: NextRequest) {
 
   const formData = await req.formData();
 
-  const headers: HeadersInit = {};
+  const headers: Record<string, string> = {};
   if (internalKey) {
     headers["X-Internal-Key"] = internalKey;
   }
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (clientIp) headers["X-Client-IP"] = clientIp;
 
   const upstream = await fetch(`${base}/api/analyze`, {
     method: "POST",
