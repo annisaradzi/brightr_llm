@@ -7,7 +7,10 @@ import base64
 import hmac
 import io
 import os
+import threading
+import time
 import uuid
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
@@ -88,6 +91,33 @@ def _require_internal_key(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+_RATE_LIMIT = int(os.getenv("RATE_LIMIT_ANALYZE_PER_HOUR", "20"))
+_RATE_WINDOW_SEC = 3600
+_rate_hits: Dict[str, deque] = defaultdict(deque)
+_rate_lock = threading.Lock()
+
+
+def _enforce_rate_limit(request: Request) -> None:
+    """Per-IP sliding window on costly analysis calls. Set RATE_LIMIT_ANALYZE_PER_HOUR=0 to disable."""
+    if _RATE_LIMIT <= 0:
+        return
+    ip = (request.headers.get("X-Client-IP") or "").strip() or (
+        request.client.host if request.client else "unknown"
+    )
+    now = time.monotonic()
+    with _rate_lock:
+        hits = _rate_hits[ip]
+        while hits and now - hits[0] > _RATE_WINDOW_SEC:
+            hits.popleft()
+        if len(hits) >= _RATE_LIMIT:
+            retry_min = max(1, int((_RATE_WINDOW_SEC - (now - hits[0])) / 60))
+            raise HTTPException(
+                status_code=429,
+                detail=f"Demo limit reached ({_RATE_LIMIT} analyses per hour). Please try again in about {retry_min} minute(s).",
+            )
+        hits.append(now)
+
+
 def _detections_for_json(analysis: AnalysisResult) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for d in analysis.detections:
@@ -146,6 +176,7 @@ def analyze_session(
     db: Session = Depends(get_db),
 ) -> InspectionSessionOut:
     _require_internal_key(request)
+    _enforce_rate_limit(request)
     return svc.analyze_session(db, session_id, rerun=rerun)
 
 
@@ -302,6 +333,7 @@ async def api_analyze(
     severity: Optional[str] = Form(None),
 ) -> dict:
     _require_internal_key(request)
+    _enforce_rate_limit(request)
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise HTTPException(
