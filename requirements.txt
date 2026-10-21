@@ -7,3 +7,4 @@ uvicorn[standard]>=0.32.0
 python-multipart>=0.0.9
 sqlalchemy>=2.0.0
 chromadb
+pandas
