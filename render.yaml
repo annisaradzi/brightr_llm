@@ -19,7 +19,7 @@ services:
     disk:
       name: brightr-data
       mountPath: /data
-      sizeGB: 1
+      sizeGB: 5
     envVars:
       - key: PORT
         value: "8000"
@@ -35,3 +35,7 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      - key: CHROMA_DB_PATH
+        value: /data/chroma_db
+      - key: RAG_CSV_PATH
+        value: /app/data/inspection_dataset_with_extracted.csv

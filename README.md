@@ -1,313 +1,154 @@
-# Photo Analysis Pipeline
+# Brightr — AI-Powered Oil & Gas Inspection Platform
 
-Analyzes images with Google Gemini (vision), returns structured JSON (summary, findings, recommendations, optional VLM detection boxes), and generates PDF reports. You can use **Streamlit** (`app.py`), the **FastAPI** service (`api_server.py`) for the **brightr.AI** Next.js UI in `web/`, or both.
+Brightr assists inspection engineers by analyzing equipment photos with Google Gemini and generating professional, engineer-style findings and maintenance recommendations — grounded in 4,700+ historical inspection records via Retrieval-Augmented Generation (RAG).
 
-## Features
+---
 
-- 📸 **Image Upload**: Support for PNG, JPG, JPEG, and WEBP formats (up to 10MB)
-- 🤖 **AI-Powered Analysis**: Uses Google Gemini Vision API for intelligent image analysis
-- 📊 **Structured Output**: Extracts findings and recommendations in a structured JSON format
-- 📋 **Tabulated Results**: Displays findings and recommendations in easy-to-read tables
-- 📄 **PDF Report Generation**: Automatically generates professional PDF reports with formatted tables
-- 💾 **Download Reports**: One-click download of generated PDF reports
+## Architecture Overview
 
-## Prerequisites
-
-- Python 3.10 or higher
-- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
-
-## Installation
-
-1. **Clone or download this repository**
-
-2. **Create a virtual environment** (recommended):
-   ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Configure your API key**:
-   - Copy `.env.example` to `.env`:
-     ```bash
-     copy .env.example .env  # Windows
-     cp .env.example .env    # macOS/Linux
-     ```
-   - Edit `.env` and set your Gemini API key:
-     ```
-     GEMINI_API_KEY=your-actual-api-key-here
-     ```
-
-## Usage
-
-### Option A: Streamlit UI
-
-1. **Start the Streamlit application**:
-   ```bash
-   streamlit run app.py
-   ```
-
-2. **Open your browser** to the URL shown (typically `http://localhost:8501`)
-
-3. **Upload an image**:
-   - Click "Browse files" or drag and drop an image
-   - Supported formats: PNG, JPG, JPEG, WEBP
-   - Maximum file size: 10MB
-
-4. **Analyze the image**:
-   - Click the "Analyze image" button
-   - Wait for the AI analysis to complete
-
-5. **Review results**:
-   - View the executive summary
-   - Browse findings in the table
-   - Review recommendations in the table
-
-6. **Download PDF report**:
-   - Click "Download PDF report" button
-   - The report includes all analysis data in a formatted PDF
-
-### Inspection sessions (Phase 1)
-
-The Next.js **New Analysis** UI uses persisted inspection sessions:
-
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | SQLite default: `sqlite:///./brightr.db` |
-| `STORAGE_ROOT` | Image/sidecar root (default `storage`) |
-| `GEMINI_API_KEY` | Required for AI analysis (sessions and `/api/analyze`) |
-| `INTERNAL_API_KEY` | Optional; required by Next BFF when set |
-
-**FastAPI endpoints:** `POST/GET /api/sessions`, upload images, analyze, PATCH item, submit. See [docs/PHASE1_API_CONTRACT.md](docs/PHASE1_API_CONTRACT.md).
-
-**Run locally (two processes):**
-
-```bash
-# Terminal 1 — FastAPI (set GEMINI_API_KEY in .env)
-uvicorn api_server:app --reload --port 8000
-
-# Terminal 2 — Web
-cd web && npm run dev
+```
+┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
+│   Frontend       │  HTTPS  │   Backend API     │  HTTPS  │   Google Gemini  │
+│   (Next.js)      │────────▶│   (FastAPI)       │────────▶│   gemini-3-flash │
+│   Hosted: Vercel │         │   Hosted: Render  │         │                  │
+└─────────────────┘         └──────────────────┘         └─────────────────┘
+                                      │
+                                      ▼
+                        ┌─────────────────────────┐
+                        │  Render Persistent Disk  │
+                        │  /data/brightr.db        │ (SQLite — sessions/items)
+                        │  /data/storage/          │ (uploaded images)
+                        │  /data/chroma_db/        │ (RAG vector index)
+                        └─────────────────────────┘
 ```
 
-Session analysis (`POST /api/sessions/{id}/analyze`) uses **Google Gemini** structured vision. The in-house VLM path in [`vlm/`](vlm/) is present but **commented out** in the API for now.
+**Key point:** the frontend (Vercel) never talks to Gemini directly. All AI calls go through the FastAPI backend (Render), which keeps `GEMINI_API_KEY` and `INTERNAL_API_KEY` server-side only.
 
-Legacy `POST /api/analyze` (single-image Gemini + PDF) is available for compatibility.
+---
 
-### Option B: brightr.AI Next.js + FastAPI
+## How Analysis Works (RAG Pipeline)
 
-1. **Install Python dependencies** (from the repo root, with your venv active):
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. Engineer uploads an inspection image via the web UI.
+2. Backend receives the image and queries [`rag_service.py`](rag_service.py) for the top-5 most similar historical inspection examples from a ChromaDB index built from `data/inspection_dataset_with_extracted.csv` (4,708 real historical findings).
+3. Those examples are injected into the Gemini prompt as **style reference only** (never copied verbatim).
+4. Gemini analyzes the image and returns structured JSON: findings, recommendation, rust grade, CoF, priority, equipment type, and bounding-box detections.
+5. Result is parsed, saved to SQLite, and displayed in the UI.
+6. On "Submit Inspection," the session becomes immutable and appears in **Reports**.
 
-2. **Configure environment** — set `GEMINI_API_KEY` in `.env` (see `.env.example`).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for full technical detail and [`docs/RAG_SYSTEM.md`](docs/RAG_SYSTEM.md) for the RAG pipeline.
 
-3. **Start the API** (terminal 1):
-   ```bash
-   uvicorn api_server:app --reload --port 8000
-   ```
-   - Health check: `GET http://127.0.0.1:8000/health`
-   - Session analysis: `POST http://127.0.0.1:8000/api/sessions/{id}/analyze`
-   - Legacy analyze: `POST http://127.0.0.1:8000/api/analyze`
+---
 
-4. **Start the web app** (terminal 2):
-   ```bash
-   cd web
-   copy .env.example .env.local
-   # Windows: use `copy` as above. macOS/Linux: cp .env.example .env.local
-   # Edit .env.local if the API is not on http://127.0.0.1:8000
-   npm install
-   npm run dev
-   ```
-   Open `http://localhost:3000`, upload an image, run analysis, then download the PDF from the UI.
-
-**Bounding boxes:** Detections with normalized `0–1` boxes are produced by **Gemini** in structured JSON (see `recommendation_taxonomy.txt` / structured prompt). **CORS** for the API is controlled by `CORS_ORIGINS` in `.env` (defaults allow the Next.js dev origin).
-
-### VLM Flask service (`vlm/`) — optional, not wired in API
-
-The Moondream2 service under `vlm/` can be run separately for experiments (`python server.py` on port 5001). FastAPI session analyze does **not** call it while VLM routing is commented out.
-
-## Deployment
-
-The recommended topology is **hybrid**:
-
-- **Next.js (`web/`)** → Vercel (native build, no Docker).
-- **FastAPI (`api_server.py`)** → Render as a Docker container with a persistent disk mounted at `/data` for SQLite + uploaded images + generated PDFs.
-
-Vercel is intentionally not used for the backend: it does not run Docker, has a strict 10 s / 60 s function ceiling (Hobby / Pro), a 4.5 MB request-body cap, and an ephemeral filesystem — all of which conflict with this service's long Gemini calls, multi-image uploads, persistent SQLite, and on-disk PDF generation.
-
-### Local: build and run the backend container
-
-```bash
-copy .env.example .env          # Windows
-cp .env.example .env            # macOS/Linux
-# fill in GEMINI_API_KEY (and INTERNAL_API_KEY if your web app sets one)
-
-docker compose up --build
-# API:        http://localhost:8000
-# Healthcheck: http://localhost:8000/health
-# Volume:     ./.data/  (SQLite + storage/)
-```
-
-The first `docker compose up` creates `./.data/brightr.db` and `./.data/storage/`. Both survive `docker compose down`; delete `./.data/` to reset.
-
-Point the Next.js dev server at the container with `INTERNAL_API_URL=http://localhost:8000` in `web/.env.local`.
-
-### Render: deploy the FastAPI backend (Docker)
-
-1. Push to GitHub.
-2. In Render: **New → Blueprint** → pick this repo. Render reads [`render.yaml`](render.yaml) and provisions:
-   - Web Service `brightr-api` on the Starter plan, Docker runtime.
-   - A 1 GB persistent disk `brightr-data` mounted at `/data`.
-   - Healthcheck on `GET /health`.
-3. When prompted, set the secret env vars:
-   - `GEMINI_API_KEY` — Gemini key.
-   - `INTERNAL_API_KEY` — shared secret; must match the value you'll put on Vercel.
-   - `CORS_ORIGINS` — your Vercel URL(s), comma-separated (e.g. `https://brightr.vercel.app`).
-4. Deploy. Copy the resulting URL (e.g. `https://brightr-api.onrender.com`).
-
-### Vercel: deploy the Next.js frontend
-
-In the Vercel project (root `web/`) set:
-
-| Variable | Value |
-|----------|-------|
-| `INTERNAL_API_URL` | `https://brightr-api.onrender.com` (no trailing slash) |
-| `INTERNAL_API_KEY` | same value as on Render |
-| `AUTH_SECRET` | random ≥16 chars |
-| `AUTH_USERS` | JSON map of demo users |
-
-Detailed Vercel checklist (function durations, body limits, build settings): [`web/VERCEL.md`](web/VERCEL.md).
-
-### Production realities (read this before you deploy)
-
-- **Render Starter is the floor** (~$7/mo). Render Free has no disks and sleeps, which would lose the SQLite DB and uploaded images on every cold start. The `render.yaml` pins `plan: starter` so deploys fail fast if you try to downgrade.
-- **Vercel timeouts.** Session analyze can run >10 s for multi-image batches. Hobby plans cap functions at 10 s — upgrade to Pro (60 s) or move the analyze trigger to direct browser-to-Render calls if you stay on Hobby.
-- **Vercel request body cap is 4.5 MB.** Image uploads currently flow through the Next.js proxy. If a single upload approaches that ceiling, switch the upload route to a presigned direct upload to Render, or chunk uploads.
-- **No automatic backups.** SQLite on a Render disk is durable across restarts but is not backed up. For anything resembling production: schedule a nightly `sqlite3 backup` to S3, or migrate to a managed Postgres + object storage (see "Upgrade path" below).
-- **Single worker by design.** The Dockerfile runs `uvicorn ... --workers 1` because SQLite handles concurrent writes poorly. Don't bump workers without first switching the DB.
-- **Disk capacity.** 1 GB holds roughly a few thousand JPEG findings plus PDFs. Monitor and bump `sizeGB` in `render.yaml` before you hit the wall — Render does not auto-expand.
-- **CORS only matters if the browser hits Render directly.** Production traffic is server-to-server through the Next.js Route Handlers, which set `X-Internal-Key` and bypass CORS. Set `CORS_ORIGINS` mainly for debugging tools or future direct uploads.
-- **Secret hygiene.** `.env`, `.env.local`, and the `.data/` volume are in `.gitignore`; `.dockerignore` also blocks them. Never commit a real `INTERNAL_API_KEY` or `GEMINI_API_KEY`.
-
-### Upgrade path (when SQLite + disk stops being enough)
-
-1. Replace `DATABASE_URL` with a managed Postgres URL (Neon, Supabase, Render Postgres). SQLAlchemy migrations should be near-drop-in.
-2. Replace `STORAGE_ROOT` with an S3/R2 bucket; swap `storage.py` for an object-storage adapter and have PDFs/JPEGs uploaded with presigned URLs.
-3. Bump Uvicorn `--workers` once writes no longer hit SQLite.
-4. Add a separate worker process for `/analyze` and put it behind a queue if request fan-out grows.
-
-## Customizing the System Prompt
-
-The application uses a system prompt to guide the AI analysis. You can customize it:
-
-1. **Edit `system_prompt` file**:
-   - Modify the prompt to change the analysis focus or output format
-   - The prompt should request JSON output with `summary`, `findings`, `recommendations`, and optional `detections` (see the file for the schema)
-
-2. **Default prompt**:
-   - If `system_prompt` file doesn't exist, the app uses a built-in default prompt
-   - The default is optimized for oil & gas corrosion inspection
-
-## Configuration
-
-### Environment Variables
-
-- `GEMINI_API_KEY`: Your Google Gemini API key (required for session analyze and `/api/analyze`)
-- `GEMINI_MODEL`: Model to use (default in code: `gemini-3-flash-preview`; override as needed)
-- `VLM_ENDPOINT_URL`: Only used when VLM routing is re-enabled in `session_service.py` (not active now)
-- `CORS_ORIGINS`: Comma-separated allowed origins for FastAPI (optional; defaults include `http://localhost:3000` and `http://127.0.0.1:3000`)
-
-For the **Next** app, copy `web/.env.example` to `web/.env.local`. Set `INTERNAL_API_URL` to the FastAPI base URL (no trailing slash) and the same `INTERNAL_API_KEY` as on the API when protected; the UI posts to the Next proxy at `/api/analyze`, which forwards to that backend.
-
-### File Limits
-
-- Maximum upload size: 10MB (configurable in `analysis_service.py`: `MAX_UPLOAD_MB`)
-- Supported formats: PNG, JPG, JPEG, WEBP (configurable in `analysis_service.py`: `SUPPORTED_EXTS`)
-
-## Project Structure
+## Repository Structure
 
 ```
 brightr_llm/
-├── analysis_service.py   # VLM client + PDF + parsing (Streamlit + API)
-├── api_server.py         # FastAPI sessions/reports, GET /health
-├── vlm/                  # Moondream2 Flask inference service
-│   ├── server.py         # POST /analyze, GET /health
-│   └── brightr_vlm_moondream.py
-├── app.py                # Streamlit UI
-├── web/                  # Next.js (brightr.AI dashboard)
-├── requirements.txt
-├── .env.example
-├── .env                  # Your secrets (not in git)
-├── system_prompt         # Customizable AI prompt (optional)
-└── reports/              # PDF output (created at runtime)
+├── api_server.py              # FastAPI app entrypoint, legacy /api/analyze endpoint
+├── session_service.py         # Session/item CRUD, submit/report flow
+├── analysis_service.py        # Gemini prompt building + response parsing
+├── rag_service.py             # ChromaDB retrieval for historical examples
+├── database.py                # SQLAlchemy engine/session (SQLite by default)
+├── models.py                  # ORM models (Session, Item)
+├── schemas.py                 # Pydantic request/response schemas
+├── storage.py                 # Image file storage on disk
+├── system_prompt                     # Editable Gemini system prompt (writing style rules)
+├── recommendation_taxonomy.txt      # Allowed recommendation codes (TBP, TBR, etc.)
+├── scripts/
+│   └── build_rag_index.py     # One-time script to embed CSV rows into ChromaDB
+├── data/
+│   └── inspection_dataset_with_extracted.csv   # 4,708 historical inspection records
+├── start.sh                   # Render startup: builds RAG index if missing, then starts uvicorn
+├── Dockerfile                 # Backend container definition
+├── render.yaml                # Render deployment blueprint
+├── docker-compose.yml         # Local full-stack dev (optional)
+├── web/                       # Next.js frontend (deployed to Vercel)
+└── docs/                      # Architecture & API documentation
 ```
 
-## How It Works
+---
 
-1. **Image Upload**: User uploads an image through Streamlit's file uploader
-2. **Image Processing**: Image is validated and converted to RGB format
-3. **AI Analysis**: 
-   - System prompt is loaded from `system_prompt` file (or uses default)
-   - Image and prompt are sent to Google Gemini Vision API
-   - Response is parsed to extract structured JSON data
-4. **Results Display**: 
-   - Summary, findings, and recommendations are displayed in the UI
-   - Data is shown in tables for easy reading
-5. **PDF Generation**: 
-   - ReportLab generates a formatted PDF with all analysis data
-   - PDF is saved to `reports/` directory and made available for download
+## Local Development
 
-## Dependencies
+### 1. Backend (FastAPI + Gemini)
 
-**Python (API):** `fastapi`, `uvicorn[standard]`, `python-multipart`, `sqlalchemy`, `google-generativeai`, `reportlab`, `Pillow`, `python-dotenv` — see `requirements.txt`
+```bash
+# from repo root
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-**Python (VLM, `vlm/`):** `torch`, `transformers`, `flask`, `flask-cors`, `pydantic` — see `vlm/requirements.txt` (not in the production image)
+# copy and fill in your .env
+cp .env.example .env
+# edit .env: set GEMINI_API_KEY
 
-**Optional (Streamlit, `app.py`):** install `streamlit` and `pandas` separately if you want the Streamlit UI; they are intentionally **not** in `requirements.txt` or the Docker image.
+# (one-time) build the RAG vector index from the CSV
+python scripts/build_rag_index.py
 
-**Web (`web/`):** `next`, `react`, `tailwindcss` (see `web/package.json`)
+# start the backend
+uvicorn api_server:app --reload --port 8000 --host 0.0.0.0
+```
+
+### 2. Frontend (Next.js)
+
+```bash
+cd web
+npm install
+
+# point the frontend at your local backend
+echo 'INTERNAL_API_URL="http://localhost:8000"' > .env.local
+
+npm run dev
+open http://localhost:3000
+```
+
+---
+
+## Environment Variables
+
+| Variable | Where | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | Backend | Google Gemini API key (**required**) |
+| `GEMINI_MODEL` | Backend | Model name (default: `gemini-3-flash-preview`) |
+| `DATABASE_URL` | Backend | SQLAlchemy DB URL (default: local SQLite) |
+| `STORAGE_ROOT` | Backend | Directory for uploaded images |
+| `CHROMA_DB_PATH` | Backend | Path to ChromaDB vector index (default: `data/chroma_db`) |
+| `RAG_CSV_PATH` | Backend | Path to historical CSV used to build the RAG index |
+| `CORS_ORIGINS` | Backend | Comma-separated allowed frontend origins |
+| `INTERNAL_API_KEY` | Backend + Frontend | Shared secret between Next.js and FastAPI |
+| `INTERNAL_API_URL` | Frontend | Public/local URL of the FastAPI backend |
+
+Never commit real values for `GEMINI_API_KEY` or `INTERNAL_API_KEY` — both `.env` and `.env.local` are gitignored.
+
+---
+
+## Deployment
+
+- **Backend** → Render, via [`render.yaml`](render.yaml) blueprint. Push to your branch, then trigger a deploy from the Render dashboard. On first boot, `start.sh` builds the RAG index on the persistent disk if it doesn't exist yet.
+- **Frontend** → Vercel. Set `INTERNAL_API_URL` and `INTERNAL_API_KEY` as environment variables in the Vercel project settings (Preview and Production separately — never test with Production).
+
+Full details: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+
+---
+
+## Customizing the AI's Writing Style
+
+Edit [`system_prompt`](system_prompt) — a plain text file loaded at request time. It defines:
+- Required finding format: `(V1) COMPONENT - description. (L:likelihood C:consequence)`
+- Which defects/components to look for
+- Recommendation wording conventions
+
+After editing, **restart the backend** (`uvicorn` does not hot-reload plain text files, only `.py` files).
+
+---
 
 ## Troubleshooting
 
-### "Missing GEMINI_API_KEY" warning
-- Ensure you've created a `.env` file from `.env.example`
-- Verify your API key is correctly set in `.env`
-- Restart the API after creating/editing `.env`
+| Symptom | Cause | Fix |
+|---|---|---|
+| `API key not valid` (400) | `GEMINI_API_KEY` is empty or a placeholder | Get a real key from https://aistudio.google.com/app/apikey and set it in `.env` |
+| System prompt changes don't apply | Backend wasn't restarted | Restart `uvicorn` — plain text files aren't hot-reloaded |
+| Findings appear as paragraphs, not `(V1) ...` format | Old cached prompt or Gemini not following schema | Confirm [`system_prompt`](system_prompt) and `STRUCTURED_SYSTEM_PROMPT_SUFFIX` in `analysis_service.py` both enforce the format |
+| `Server misconfiguration: set INTERNAL_API_URL` | Frontend env var missing | Set `INTERNAL_API_URL` in Vercel (Preview) or `web/.env.local` (local dev) |
+| RAG examples not appearing in prompt | ChromaDB index not built | Run `python scripts/build_rag_index.py` |
 
-### "Gemini analysis failed" error
-- Check your API key is valid and has sufficient quota
-- Verify you have internet connectivity
-- Check the model name in `GEMINI_MODEL` environment variable
-
-### VLM (optional, experimental)
-- Not required for the default session flow while VLM is commented out in the API
-- To experiment: `cd vlm && python server.py`, then re-enable VLM calls in `session_service.py`
-
-### PDF generation fails
-- Ensure write permissions for the `reports/` directory
-- Check available disk space
-
-### Image upload issues
-- Verify file format is supported (PNG, JPG, JPEG, WEBP)
-- Check file size is under 10MB
-- Ensure the image file is not corrupted
-
-## License
-
-This project is provided as-is for educational and development purposes.
-
-## Support
-
-For issues or questions:
-1. Check the troubleshooting section above
-2. Review the error messages in the Streamlit UI
-3. Check the "Raw model output (debug)" expander if analysis fails
+More: see [`docs/REPO_SUMMARY.md`](docs/REPO_SUMMARY.md)

@@ -3,6 +3,15 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Login disabled: send /login visitors straight to the app.
+  if (process.env.AUTH_ENABLED?.trim().toLowerCase() !== "true") {
+    if (pathname === "/login") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const email = await verifySessionToken(token);
 

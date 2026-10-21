@@ -22,7 +22,15 @@ export function getInternalBase(): string {
   return baseRaw;
 }
 
+/** Login is off unless AUTH_ENABLED=true (kept in code for later reuse). */
+export function isAuthEnabled(): boolean {
+  return process.env.AUTH_ENABLED?.trim().toLowerCase() === "true";
+}
+
+export const GUEST_EMAIL = "guest@brightr.ai";
+
 export async function requireUserEmail(req: NextRequest): Promise<string | NextResponse> {
+  if (!isAuthEnabled()) return GUEST_EMAIL;
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const email = await verifySessionToken(token);
   if (!email) {
