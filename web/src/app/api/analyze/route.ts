@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { isAuthEnabled } from "@/lib/internal-api";
 
 export const runtime = "nodejs";
 /** Vercel Pro allows up to 300s; Hobby is capped at ~10s (see web/VERCEL.md). */
@@ -17,10 +18,12 @@ function isLocalhostUrl(u: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get(SESSION_COOKIE)?.value;
-  const email = await verifySessionToken(token);
-  if (!email) {
-    return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+  if (isAuthEnabled()) {
+    const token = req.cookies.get(SESSION_COOKIE)?.value;
+    const email = await verifySessionToken(token);
+    if (!email) {
+      return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+    }
   }
 
   const baseRaw = process.env.INTERNAL_API_URL?.replace(/\/$/, "") || INTERNAL;
